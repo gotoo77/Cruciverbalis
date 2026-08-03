@@ -49,12 +49,9 @@ export function placeEntry(grid: DomainGrid, placement: Placement): PlacementRes
     entry: { ...placement.entry, answer },
   };
 
-  const before = offset(normalized.start, normalized.direction, -1);
-  const after = offset(normalized.start, normalized.direction, answer.length);
-  if (grid.cells.has(coordinateKey(before)) || grid.cells.has(coordinateKey(after))) {
-    return failure('touching-end', 'An entry cannot touch another entry at either end.');
-  }
-
+  // Validate occupied cells first so the most specific structural failure wins.
+  // For example, an overlapping parallel entry must not be reported merely as
+  // touching the previous entry at one of its ends.
   for (let index = 0; index < answer.length; index += 1) {
     const coordinate = coordinateAt(normalized, index);
     const existing = grid.cells.get(coordinateKey(coordinate));
@@ -75,6 +72,12 @@ export function placeEntry(grid: DomainGrid, placement: Placement): PlacementRes
         }
       }
     }
+  }
+
+  const before = offset(normalized.start, normalized.direction, -1);
+  const after = offset(normalized.start, normalized.direction, answer.length);
+  if (grid.cells.has(coordinateKey(before)) || grid.cells.has(coordinateKey(after))) {
+    return failure('touching-end', 'An entry cannot touch another entry at either end.');
   }
 
   const cells = new Map(grid.cells);
