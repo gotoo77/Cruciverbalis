@@ -10,6 +10,8 @@ import {
 import { createEmptyGrid, placeEntry } from '../core/grid';
 import { normalizeAnswer } from '../core/normalize';
 
+export type EntryOrdering = 'fixed' | 'mrv';
+
 export interface SearchMetrics {
   readonly nodesExplored: number;
   readonly placementsTried: number;
@@ -17,10 +19,13 @@ export interface SearchMetrics {
   readonly deadEnds: number;
   readonly solutionsFound: number;
   readonly maxDepth: number;
+  readonly mrvSelections: number;
+  readonly candidateSetsEvaluated: number;
 }
 
 export interface BacktrackingOptions {
   readonly maxNodes?: number;
+  readonly entryOrdering?: EntryOrdering;
 }
 
 export interface BacktrackingResult {
@@ -37,6 +42,8 @@ interface MutableMetrics {
   deadEnds: number;
   solutionsFound: number;
   maxDepth: number;
+  mrvSelections: number;
+  candidateSetsEvaluated: number;
 }
 
 interface Candidate {
@@ -44,6 +51,12 @@ interface Candidate {
   readonly placement: Placement;
   readonly crossings: number;
   readonly area: number;
+}
+
+interface SelectedEntry {
+  readonly entry: Entry;
+  readonly rest: readonly Entry[];
+  readonly candidates: readonly Candidate[];
 }
 
 interface SearchBest {
@@ -129,6 +142,52 @@ function candidatesFor(grid: DomainGrid, entry: Entry): Candidate[] {
   );
 }
 
+function selectNextEntry(
+  grid: DomainGrid,
+  pending: readonly Entry[],
+  ordering: EntryOrdering,
+  metrics: MutableMetrics,
+): SelectedEntry | undefined {
+  if (ordering === 'fixed') {
+    const [entry, ...rest] = pending;
+    if (!entry) return undefined;
+    metrics.candidateSetsEvaluated += 1;
+    return { entry, rest, candidates: candidatesFor(grid, entry) };
+  }
+
+  let selectedIndex = -1;
+  let selectedCandidates: readonly Candidate[] = [];
+
+  for (let index = 0; index < pending.length; index += 1) {
+    const entry = pending[index];
+    if (!entry) continue;
+
+    const candidates = candidatesFor(grid, entry);
+    metrics.candidateSetsEvaluated += 1;
+
+    if (
+      selectedIndex < 0 ||
+      candidates.length < selectedCandidates.length ||
+      (candidates.length === selectedCandidates.length &&
+        entry.answer.localeCompare(pending[selectedIndex]?.answer ?? '') < 0)
+    ) {
+      selectedIndex = index;
+      selectedCandidates = candidates;
+    }
+  }
+
+  if (selectedIndex < 0) return undefined;
+  const entry = pending[selectedIndex];
+  if (!entry) return undefined;
+
+  metrics.mrvSelections += 1;
+  return {
+    entry,
+    candidates: selectedCandidates,
+    rest: pending.filter((_, index) => index !== selectedIndex),
+  };
+}
+
 function isBetter(grid: DomainGrid, unplaced: readonly Entry[], best: SearchBest): boolean {
   if (unplaced.length !== best.unplaced.length) return unplaced.length < best.unplaced.length;
   if (grid.placements.length !== best.grid.placements.length) {
@@ -156,8 +215,11 @@ export function solveBacktracking(
     deadEnds: 0,
     solutionsFound: 0,
     maxDepth: 0,
+    mrvSelections: 0,
+    candidateSetsEvaluated: 0,
   };
   const maxNodes = options.maxNodes ?? 100_000;
+  const entryOrdering = options.entryOrdering ?? 'mrv';
   let truncated = false;
 
   if (normalized.length === 0) {
@@ -202,9 +264,9 @@ export function solveBacktracking(
       return;
     }
 
-    const [entry, ...rest] = pending;
-    if (!entry) return;
-    const candidates = candidatesFor(grid, entry);
+    const selected = selectNextEntry(grid, pending, entryOrdering, metrics);
+    if (!selected) return;
+    const { entry, rest, candidates } = selected;
 
     if (candidates.length === 0) metrics.deadEnds += 1;
 
