@@ -55,7 +55,7 @@ export function placeEntry(grid: DomainGrid, placement: Placement): PlacementRes
   for (let index = 0; index < answer.length; index += 1) {
     const coordinate = coordinateAt(normalized, index);
     const existing = grid.cells.get(coordinateKey(coordinate));
-    const letter = answer[index];
+    const letter = answer.charAt(index);
 
     if (existing && existing.letter !== letter) {
       return failure('letter-conflict', 'Crossing letters must be identical.', coordinate);
@@ -87,7 +87,7 @@ export function placeEntry(grid: DomainGrid, placement: Placement): PlacementRes
     const existing = cells.get(key);
     const directions = new Set(existing?.directions ?? []);
     directions.add(normalized.direction);
-    const cell: CellOccupancy = { letter: answer[index], directions };
+    const cell: CellOccupancy = { letter: answer.charAt(index), directions };
     cells.set(key, cell);
   }
 
