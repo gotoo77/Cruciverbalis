@@ -27,6 +27,8 @@ describe('backtracking solver', () => {
     expect(result.metrics.placementsTried).toBeGreaterThan(0);
     expect(result.metrics.backtracks).toBeGreaterThan(0);
     expect(result.metrics.solutionsFound).toBeGreaterThan(0);
+    expect(result.metrics.mrvSelections).toBeGreaterThan(0);
+    expect(result.metrics.candidateSetsEvaluated).toBeGreaterThan(0);
   });
 
   it('keeps disconnected entries explicit instead of inventing filler', () => {
@@ -54,6 +56,39 @@ describe('backtracking solver', () => {
     expect(first.grid.placements).toEqual(second.grid.placements);
     expect(first.unplaced).toEqual(second.unplaced);
     expect(first.metrics).toEqual(second.metrics);
+  });
+
+  it('can retain the historical fixed ordering for comparison', () => {
+    const entries = [
+      { answer: 'MAISON' },
+      { answer: 'SOURIS' },
+      { answer: 'RAISON' },
+      { answer: 'MARS' },
+      { answer: 'SOIN' },
+    ];
+
+    const fixed = solveBacktracking(entries, { entryOrdering: 'fixed' });
+    const mrv = solveBacktracking(entries, { entryOrdering: 'mrv' });
+
+    expect(fixed.metrics.mrvSelections).toBe(0);
+    expect(mrv.metrics.mrvSelections).toBeGreaterThan(0);
+    expect(answers(mrv)).toEqual(answers(solveBacktracking(entries)));
+  });
+
+  it('evaluates more candidate sets when MRV compares pending entries', () => {
+    const entries = [
+      { answer: 'TACHE' },
+      { answer: 'CHAT' },
+      { answer: 'HACHE' },
+      { answer: 'THE' },
+    ];
+
+    const fixed = solveBacktracking(entries, { entryOrdering: 'fixed' });
+    const mrv = solveBacktracking(entries, { entryOrdering: 'mrv' });
+
+    expect(mrv.metrics.candidateSetsEvaluated).toBeGreaterThanOrEqual(
+      fixed.metrics.candidateSetsEvaluated,
+    );
   });
 
   it('honours the node budget and reports truncation', () => {
