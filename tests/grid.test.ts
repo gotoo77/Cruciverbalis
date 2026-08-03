@@ -27,7 +27,7 @@ describe('crossword domain invariants', () => {
     expect(first.ok).toBe(true);
     if (!first.ok) return;
 
-    const second = placeEntry(first.grid, placement('ARBRE', -2, 2, 'down'));
+    const second = placeEntry(first.grid, placement('ARBRE', 0, 2, 'down'));
     expect(second.ok).toBe(true);
     if (!second.ok) return;
 
