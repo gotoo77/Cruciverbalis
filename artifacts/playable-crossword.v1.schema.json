@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gotoo77.github.io/Cruciverbalis/artifacts/playable-crossword.v1.schema.json",
+  "title": "Cruciverbalis PlayableCrossword v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "id", "name", "language", "clueSetId", "entries"],
+  "properties": {
+    "schema": { "const": "cruciverbalis.playable-crossword.v1" },
+    "id": { "type": "string", "minLength": 1 },
+    "name": { "type": "string", "minLength": 1 },
+    "language": { "type": "string", "minLength": 1 },
+    "wordSetId": { "type": "string", "minLength": 1 },
+    "clueSetId": { "type": "string", "minLength": 1 },
+    "entries": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "answer", "row", "col", "direction", "clue"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "answer": { "type": "string", "minLength": 1 },
+          "row": { "type": "integer" },
+          "col": { "type": "integer" },
+          "direction": { "enum": ["across", "down"] },
+          "clue": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "kind", "text"],
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "kind": {
+                "enum": ["definition", "synonym", "analogy", "wordplay", "historical", "quote", "phonetic", "cryptic", "etymology"]
+              },
+              "text": { "type": "string", "minLength": 1 },
+              "difficulty": { "type": "integer", "minimum": 1, "maximum": 5 }
+            }
+          }
+        }
+      }
+    },
+    "provenance": { "type": "object" }
+  }
+}
