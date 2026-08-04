@@ -70,5 +70,25 @@ export {
   type EditorialPreference,
 } from '../editorial/editorial-policy';
 
+export {
+  WORD_SET_SCHEMA,
+  parseWordSetJson,
+  serializeWordSet,
+  validateWordSet,
+  wordSetToEntries,
+  type ArtifactProvenance,
+  type WordSet,
+  type WordSetEntry,
+  type WordSetValidationFailure,
+  type WordSetValidationIssue,
+  type WordSetValidationResult,
+  type WordSetValidationSuccess,
+} from '../artifacts/word-set';
+
+export {
+  WORD_SET_PRESETS,
+  findWordSetPreset,
+} from '../artifacts/word-set-presets';
+
 export type { Entry } from '../core/domain';
 export type { GridQuality } from '../quality/grid-quality';
