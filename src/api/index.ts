@@ -34,5 +34,16 @@ export {
   type MorphologyObservation,
 } from '../quality/morphology-discriminants';
 
+export {
+  comparableSolutionId,
+  createHumanComparisonArtifact,
+  createHumanComparisonVote,
+  createSameQualityComparisonPairs,
+  type HumanComparisonArtifact,
+  type HumanComparisonDecision,
+  type HumanComparisonPair,
+  type HumanComparisonVote,
+} from '../feedback/pairwise-comparison';
+
 export type { Entry } from '../core/domain';
 export type { GridQuality } from '../quality/grid-quality';

@@ -3,12 +3,18 @@ import {
   analyzeParetoFront,
   analyzeParetoMorphology,
   analyzeParetoMorphologyDiscriminants,
+  createHumanComparisonArtifact,
+  createHumanComparisonVote,
+  createSameQualityComparisonPairs,
   generate,
   measureGridMorphology,
   type Entry,
   type GeneratedGrid,
   type GenerationResult,
   type GenerationStrategy,
+  type HumanComparisonDecision,
+  type HumanComparisonPair,
+  type HumanComparisonVote,
   type MorphologyMetric,
 } from './api';
 
@@ -187,7 +193,76 @@ function renderSearch(result: GenerationResult): string {
   `;
 }
 
-function renderSolution(result: GenerationResult, index: number): string {
+function renderComparisonCandidate(solution: GeneratedGrid, label: string, solutionNumber: number): string {
+  const morphology = measureGridMorphology(solution.grid);
+  return `
+    <article class="comparison-candidate">
+      <div class="comparison-title"><strong>${label}</strong><span>solution ${solutionNumber}</span></div>
+      ${renderGrid(solution)}
+      <div class="comparison-morphology">
+        <span>${morphology.width}×${morphology.height}</span>
+        <span>aspect ${morphology.aspectRatio.toFixed(2)}</span>
+        <span>${morphology.leafEntries} feuilles</span>
+        <span>diamètre ${morphology.graphDiameter}</span>
+      </div>
+    </article>
+  `;
+}
+
+function renderHumanComparison(
+  result: GenerationResult,
+  pairs: readonly HumanComparisonPair<GeneratedGrid>[],
+  pairIndex: number,
+  votes: readonly HumanComparisonVote[],
+): string {
+  if (result.strategy !== 'pareto') return '';
+  if (pairs.length === 0) {
+    return '<section class="human-comparison"><h3>Comparaison humaine</h3><p class="search-note">Aucune paire de grilles de même qualité mais de morphologie différente n’a été trouvée dans ce front.</p></section>';
+  }
+
+  const pair = pairs[pairIndex];
+  if (!pair) {
+    return `
+      <section class="human-comparison">
+        <h3>Comparaison humaine terminée</h3>
+        <p>${votes.length} jugement${votes.length > 1 ? 's' : ''} enregistré${votes.length > 1 ? 's' : ''} localement. Aucun de ces choix ne modifie le solveur.</p>
+        <button id="export-comparisons" class="secondary">Exporter les jugements JSON</button>
+      </section>
+    `;
+  }
+
+  return `
+    <section class="human-comparison" aria-labelledby="comparison-title">
+      <div class="comparison-heading">
+        <div>
+          <p class="eyebrow">Humain dans la boucle</p>
+          <h3 id="comparison-title">À qualité mesurée égale, laquelle préfères-tu ?</h3>
+        </div>
+        <strong>${pairIndex + 1} / ${pairs.length}</strong>
+      </div>
+      <p class="search-note">Ces deux grilles ont exactement le même <code>GridQuality</code>. Ton choix sert à observer une préférence que nos métriques ne capturent peut-être pas.</p>
+      <div class="comparison-grid">
+        ${renderComparisonCandidate(pair.left, 'A', pair.leftIndex + 1)}
+        ${renderComparisonCandidate(pair.right, 'B', pair.rightIndex + 1)}
+      </div>
+      <div class="comparison-actions">
+        <button data-comparison-decision="left">Je préfère A</button>
+        <button data-comparison-decision="right">Je préfère B</button>
+        <button class="secondary" data-comparison-decision="tie">Équivalentes</button>
+        <button class="secondary" data-comparison-decision="skip">Je ne sais pas</button>
+      </div>
+      <p class="search-note">Les jugements restent dans cette session jusqu’à export explicite ; aucun backend n’est utilisé.</p>
+    </section>
+  `;
+}
+
+function renderSolution(
+  result: GenerationResult,
+  index: number,
+  comparisonPairs: readonly HumanComparisonPair<GeneratedGrid>[],
+  comparisonIndex: number,
+  comparisonVotes: readonly HumanComparisonVote[],
+): string {
   const solution = result.solutions[index];
   if (!solution) {
     return '<p class="empty">Le solveur n’a produit aucune solution dans le budget demandé.</p>';
@@ -214,7 +289,18 @@ function renderSolution(result: GenerationResult, index: number): string {
     ${renderMorphology(solution)}
     ${result.truncated ? '<p class="warning"><strong>Recherche tronquée :</strong> le budget de nœuds a été atteint.</p>' : ''}
     ${renderSearch(result)}
+    ${renderHumanComparison(result, comparisonPairs, comparisonIndex, comparisonVotes)}
   `;
+}
+
+function downloadJson(filename: string, value: unknown): void {
+  const blob = new Blob([JSON.stringify(value, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
 }
 
 function render(): void {
@@ -283,6 +369,9 @@ function render(): void {
 
   let currentResult: GenerationResult | undefined;
   let solutionIndex = 0;
+  let comparisonPairs: readonly HumanComparisonPair<GeneratedGrid>[] = [];
+  let comparisonIndex = 0;
+  let comparisonVotes: HumanComparisonVote[] = [];
 
   const strategyLabel = (strategy: GenerationStrategy): string => ({
     greedy: 'Glouton',
@@ -292,7 +381,13 @@ function render(): void {
 
   const paintSolution = (): void => {
     if (!currentResult) return;
-    resultElement.innerHTML = renderSolution(currentResult, solutionIndex);
+    resultElement.innerHTML = renderSolution(
+      currentResult,
+      solutionIndex,
+      comparisonPairs,
+      comparisonIndex,
+      comparisonVotes,
+    );
     badge.textContent = strategyLabel(currentResult.strategy);
 
     document.querySelector<HTMLButtonElement>('#previous-solution')?.addEventListener('click', () => {
@@ -302,6 +397,25 @@ function render(): void {
     document.querySelector<HTMLButtonElement>('#next-solution')?.addEventListener('click', () => {
       solutionIndex = Math.min(currentResult!.solutions.length - 1, solutionIndex + 1);
       paintSolution();
+    });
+
+    document.querySelectorAll<HTMLButtonElement>('[data-comparison-decision]').forEach((comparisonButton) => {
+      comparisonButton.addEventListener('click', () => {
+        const pair = comparisonPairs[comparisonIndex];
+        if (!pair) return;
+        const decision = comparisonButton.dataset.comparisonDecision as HumanComparisonDecision;
+        comparisonVotes = [
+          ...comparisonVotes,
+          createHumanComparisonVote(pair, comparisonIndex, decision),
+        ];
+        comparisonIndex += 1;
+        paintSolution();
+      });
+    });
+
+    document.querySelector<HTMLButtonElement>('#export-comparisons')?.addEventListener('click', () => {
+      const artifact = createHumanComparisonArtifact(comparisonVotes, new Date().toISOString());
+      downloadJson('cruciverbalis-human-comparisons.json', artifact);
     });
   };
 
@@ -316,6 +430,11 @@ function render(): void {
     window.setTimeout(() => {
       currentResult = generate({ entries, strategy, maxNodes });
       solutionIndex = 0;
+      comparisonPairs = currentResult.strategy === 'pareto'
+        ? createSameQualityComparisonPairs(currentResult.solutions, 12)
+        : [];
+      comparisonIndex = 0;
+      comparisonVotes = [];
       paintSolution();
       button.disabled = false;
       button.textContent = 'Générer';
