@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gotoo77.github.io/Cruciverbalis/artifacts/clue-set.v1.schema.json",
+  "title": "Cruciverbalis ClueSet v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "id", "name", "language", "clues"],
+  "properties": {
+    "schema": { "const": "cruciverbalis.clue-set.v1" },
+    "id": { "type": "string", "minLength": 1 },
+    "name": { "type": "string", "minLength": 1 },
+    "language": { "type": "string", "minLength": 1 },
+    "description": { "type": "string", "minLength": 1 },
+    "license": { "type": "string", "minLength": 1 },
+    "author": { "type": "string", "minLength": 1 },
+    "clues": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "answer", "kind", "text"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "answer": { "type": "string", "minLength": 1 },
+          "kind": {
+            "enum": ["definition", "synonym", "analogy", "wordplay", "historical", "quote", "phonetic", "cryptic", "etymology"]
+          },
+          "text": { "type": "string", "minLength": 1 },
+          "difficulty": { "type": "integer", "minimum": 1, "maximum": 5 },
+          "source": { "type": "string", "minLength": 1 },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+          "tags": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "createdBy": { "type": "string", "minLength": 1 },
+        "source": { "type": "string", "minLength": 1 },
+        "createdAt": { "type": "string", "minLength": 1 },
+        "parentArtifacts": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}
