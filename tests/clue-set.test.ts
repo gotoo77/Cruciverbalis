@@ -61,11 +61,17 @@ describe('ClueSet v1', () => {
     expect(result.issues.some(({ message }) => message === 'duplicates another clue id')).toBe(true);
   });
 
-  it('round-trips through JSON serialization', () => {
+  it('round-trips through JSON serialization to the canonical representation', () => {
+    const canonical = validateClueSet(fixture);
+    expect(canonical.ok).toBe(true);
+    if (!canonical.ok) return;
+
     const parsed = parseClueSetJson(serializeClueSet(fixture));
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
-    expect(parsed.value).toEqual(fixture);
+
+    expect(parsed.value).toEqual(canonical.value);
+    expect(parsed.value.clues[0]?.answer).toBe('PASTEQUE');
   });
 
   it('validates difficulty and confidence ranges', () => {
