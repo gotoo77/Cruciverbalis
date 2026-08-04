@@ -1,5 +1,6 @@
 import './style.css';
 import {
+  analyzeParetoFront,
   generate,
   type Entry,
   type GeneratedGrid,
@@ -100,6 +101,25 @@ function renderQuality(solution: GeneratedGrid): string {
   `;
 }
 
+function renderParetoAnalysis(result: GenerationResult): string {
+  if (result.strategy !== 'pareto') return '';
+
+  const analysis = analyzeParetoFront(result.solutions);
+  const repeated = analysis.repeatedQualityProfileCount === 0
+    ? 'aucun profil de qualité répété'
+    : `${analysis.repeatedQualityProfileCount} profil${analysis.repeatedQualityProfileCount > 1 ? 's' : ''} de qualité répété${analysis.repeatedQualityProfileCount > 1 ? 's' : ''}, regroupant ${analysis.solutionsInRepeatedProfiles} solutions`;
+
+  return `
+    <div class="pareto-summary">
+      <strong>Cartographie du front :</strong>
+      ${analysis.solutionCount} solution${analysis.solutionCount > 1 ? 's' : ''},
+      ${analysis.qualityProfileCount} profil${analysis.qualityProfileCount > 1 ? 's' : ''} de qualité distinct${analysis.qualityProfileCount > 1 ? 's' : ''},
+      ${repeated}.
+      <span>Même profil ne signifie pas même grille.</span>
+    </div>
+  `;
+}
+
 function renderSearch(result: GenerationResult): string {
   if (!result.search) return '<p class="search-note">Le solveur glouton ne parcourt pas un arbre de recherche instrumenté.</p>';
 
@@ -140,6 +160,7 @@ function renderSolution(result: GenerationResult, index: number): string {
     : '<p class="success">Tous les mots admissibles ont été placés.</p>';
 
   return `
+    ${renderParetoAnalysis(result)}
     ${navigation}
     ${renderQuality(solution)}
     ${renderGrid(solution)}
