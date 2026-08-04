@@ -45,5 +45,13 @@ export {
   type HumanComparisonVote,
 } from '../feedback/pairwise-comparison';
 
+export {
+  analyzeHumanComparisonArtifact,
+  analyzeHumanComparisonVotes,
+  type HumanFeedbackAnalysis,
+  type HumanMorphologyPreferenceSignal,
+  type HumanPreferenceDirection,
+} from '../feedback/human-feedback-analysis';
+
 export type { Entry } from '../core/domain';
 export type { GridQuality } from '../quality/grid-quality';
