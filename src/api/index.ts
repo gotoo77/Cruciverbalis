@@ -110,6 +110,22 @@ export {
 } from '../artifacts/clue-set';
 
 export {
+  PLAYABLE_CROSSWORD_SCHEMA,
+  composePlayableCrossword,
+  parsePlayableCrosswordJson,
+  serializePlayableCrossword,
+  validatePlayableCrossword,
+  type ClueSelection,
+  type ComposePlayableCrosswordOptions,
+  type ComposePlayableCrosswordResult,
+  type PlayableClue,
+  type PlayableCrossword,
+  type PlayableCrosswordIssue,
+  type PlayableCrosswordValidationResult,
+  type PlayableEntry,
+} from '../artifacts/playable-crossword';
+
+export {
   analyzeWordSet,
   type WordSetAnalysis,
   type WordSetDifficulty,
