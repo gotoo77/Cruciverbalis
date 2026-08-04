@@ -25,5 +25,14 @@ export {
   type ParetoMorphologyFamily,
 } from '../quality/pareto-morphology';
 
+export {
+  analyzeMorphologyObservations,
+  analyzeParetoMorphologyDiscriminants,
+  type MorphologyDiscriminant,
+  type MorphologyDiscriminantAnalysis,
+  type MorphologyMetric,
+  type MorphologyObservation,
+} from '../quality/morphology-discriminants';
+
 export type { Entry } from '../core/domain';
 export type { GridQuality } from '../quality/grid-quality';

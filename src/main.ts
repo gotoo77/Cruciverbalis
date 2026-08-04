@@ -2,12 +2,14 @@ import './style.css';
 import {
   analyzeParetoFront,
   analyzeParetoMorphology,
+  analyzeParetoMorphologyDiscriminants,
   generate,
   measureGridMorphology,
   type Entry,
   type GeneratedGrid,
   type GenerationResult,
   type GenerationStrategy,
+  type MorphologyMetric,
 } from './api';
 
 const defaults = `NUCLEAIRE | Énergie issue de transformations du noyau atomique
@@ -121,14 +123,35 @@ function renderMorphology(solution: GeneratedGrid): string {
   `;
 }
 
+const morphologyMetricLabel = (metric: MorphologyMetric): string => ({
+  width: 'largeur',
+  height: 'hauteur',
+  aspectRatio: 'ratio d’aspect',
+  exposedEdges: 'bords exposés',
+  leafEntries: 'entrées feuilles',
+  maxEntryDegree: 'degré maximal',
+  graphDiameter: 'diamètre du graphe',
+})[metric];
+
 function renderParetoAnalysis(result: GenerationResult): string {
   if (result.strategy !== 'pareto') return '';
 
   const quality = analyzeParetoFront(result.solutions);
   const morphology = analyzeParetoMorphology(result.solutions);
+  const discrimination = analyzeParetoMorphologyDiscriminants(result.solutions);
   const repeated = quality.repeatedQualityProfileCount === 0
     ? 'aucun profil de qualité répété'
     : `${quality.repeatedQualityProfileCount} profil${quality.repeatedQualityProfileCount > 1 ? 's' : ''} de qualité répété${quality.repeatedQualityProfileCount > 1 ? 's' : ''}, regroupant ${quality.solutionsInRepeatedProfiles} solutions`;
+  const usefulDiscriminants = discrimination.discriminants.filter(
+    ({ varyingQualityFamilies }) => varyingQualityFamilies > 0,
+  );
+  const leaders = usefulDiscriminants
+    .slice(0, 3)
+    .map(
+      ({ metric, varyingQualityFamilies, repeatedQualityFamilies }) =>
+        `${morphologyMetricLabel(metric)} (${varyingQualityFamilies}/${repeatedQualityFamilies})`,
+    )
+    .join(', ');
 
   return `
     <div class="pareto-summary">
@@ -137,6 +160,7 @@ function renderParetoAnalysis(result: GenerationResult): string {
       ${quality.qualityProfileCount} profil${quality.qualityProfileCount > 1 ? 's' : ''} de qualité distinct${quality.qualityProfileCount > 1 ? 's' : ''},
       ${repeated}.
       <span>${morphology.morphologyProfileCount} profil${morphology.morphologyProfileCount > 1 ? 's' : ''} morphologique${morphology.morphologyProfileCount > 1 ? 's' : ''} observé${morphology.morphologyProfileCount > 1 ? 's' : ''} ; ${morphology.qualityProfilesSplitByMorphology} profil${morphology.qualityProfilesSplitByMorphology > 1 ? 's' : ''} de qualité se divis${morphology.qualityProfilesSplitByMorphology > 1 ? 'ent' : 'e'} en plusieurs formes.</span>
+      <span>${discrimination.repeatedQualityFamiliesSplitByAnyMorphologyMetric}/${discrimination.repeatedQualityFamilyCount} famille${discrimination.repeatedQualityFamilyCount > 1 ? 's' : ''} répétée${discrimination.repeatedQualityFamilyCount > 1 ? 's' : ''} sont distinguées par au moins une métrique morphologique${leaders ? ` ; principales dimensions : ${leaders}` : ''}.</span>
       <span>Même qualité et même morphologie mesurée ne signifient toujours pas nécessairement même grille.</span>
     </div>
   `;
