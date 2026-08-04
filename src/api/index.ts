@@ -86,6 +86,12 @@ export {
 } from '../artifacts/word-set';
 
 export {
+  analyzeWordSet,
+  type WordSetAnalysis,
+  type WordSetDifficulty,
+} from '../artifacts/word-set-analysis';
+
+export {
   WORD_SET_PRESETS,
   findWordSetPreset,
 } from '../artifacts/word-set-presets';
