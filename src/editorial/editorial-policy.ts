@@ -65,18 +65,23 @@ function validatePolicy(policy: EditorialPolicy): void {
   }
 }
 
+function preferenceDistance(value: number, preference: EditorialPreference): number {
+  switch (preference.prefer) {
+    case 'lower':
+      return value;
+    case 'higher':
+      return -value;
+    case 'target':
+      return Math.abs(value - preference.target);
+  }
+}
+
 function criterion(
   morphology: GridMorphology,
   preference: EditorialPreference,
 ): EditorialCriterionEvaluation {
   const value = morphology[preference.metric];
-  const distance = preference.prefer === 'lower'
-    ? value
-    : preference.prefer === 'higher'
-      ? -value
-      : Math.abs(value - preference.target);
-
-  return { preference, value, distance };
+  return { preference, value, distance: preferenceDistance(value, preference) };
 }
 
 function compareEvaluations(
