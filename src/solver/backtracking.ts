@@ -9,6 +9,11 @@ import {
 } from '../core/domain';
 import { createEmptyGrid, placeEntry } from '../core/grid';
 import { normalizeAnswer } from '../core/normalize';
+import {
+  addToParetoFront,
+  createParetoSolution,
+  type ParetoSolution,
+} from './pareto';
 
 export type EntryOrdering = 'fixed' | 'mrv';
 
@@ -22,12 +27,20 @@ export interface SearchMetrics {
   readonly mrvSelections: number;
   readonly candidateSetsEvaluated: number;
   readonly branchesPruned: number;
+  readonly paretoCandidates: number;
+  readonly paretoAccepted: number;
 }
 
 export interface BacktrackingOptions {
   readonly maxNodes?: number;
   readonly entryOrdering?: EntryOrdering;
   readonly branchAndBound?: boolean;
+  /**
+   * Preserve every non-dominated terminal solution instead of only the legacy
+   * scalar incumbent. Pareto collection disables the current scalar bound,
+   * because that bound is not sound for all quality dimensions.
+   */
+  readonly collectPareto?: boolean;
 }
 
 export interface BacktrackingResult {
@@ -35,6 +48,7 @@ export interface BacktrackingResult {
   readonly unplaced: readonly Entry[];
   readonly metrics: SearchMetrics;
   readonly truncated: boolean;
+  readonly paretoFront: readonly ParetoSolution[];
 }
 
 interface MutableMetrics {
@@ -47,6 +61,8 @@ interface MutableMetrics {
   mrvSelections: number;
   candidateSetsEvaluated: number;
   branchesPruned: number;
+  paretoCandidates: number;
+  paretoAccepted: number;
 }
 
 interface Candidate {
@@ -204,9 +220,6 @@ function cannotBeatBest(
   invalidCount: number,
   best: SearchBest,
 ): boolean {
-  // Even in the optimistic case where every pending entry is placed, entries
-  // already skipped (plus invalid input) remain unplaced. If that lower bound
-  // is already worse than the incumbent, this branch cannot win.
   const minimumPossibleUnplaced = skippedCount + invalidCount;
   return minimumPossibleUnplaced > best.unplaced.length;
 }
@@ -233,18 +246,31 @@ export function solveBacktracking(
     mrvSelections: 0,
     candidateSetsEvaluated: 0,
     branchesPruned: 0,
+    paretoCandidates: 0,
+    paretoAccepted: 0,
   };
   const maxNodes = options.maxNodes ?? 100_000;
   const entryOrdering = options.entryOrdering ?? 'mrv';
-  const branchAndBound = options.branchAndBound ?? true;
+  const collectPareto = options.collectPareto ?? false;
+  // The existing bound optimizes completeness first and is therefore not a
+  // valid pruning proof for the complete multidimensional Pareto objective.
+  const branchAndBound = (options.branchAndBound ?? true) && !collectPareto;
   let truncated = false;
+  let paretoFront: readonly ParetoSolution[] = [];
 
   if (normalized.length === 0) {
+    const grid = createEmptyGrid();
+    if (collectPareto) {
+      paretoFront = [createParetoSolution(grid, entries)];
+      metrics.paretoCandidates = 1;
+      metrics.paretoAccepted = 1;
+    }
     return {
-      grid: createEmptyGrid(),
+      grid,
       unplaced: [...entries],
       metrics,
       truncated,
+      paretoFront,
     };
   }
 
@@ -257,7 +283,13 @@ export function solveBacktracking(
     direction: 'across',
   });
   if (!initial.ok) {
-    return { grid: createEmptyGrid(), unplaced: [...entries], metrics, truncated };
+    return {
+      grid: createEmptyGrid(),
+      unplaced: [...entries],
+      metrics,
+      truncated,
+      paretoFront,
+    };
   }
 
   const best: SearchBest = { grid: initial.grid, unplaced: [...remaining, ...invalid] };
@@ -283,6 +315,13 @@ export function solveBacktracking(
         best.grid = grid;
         best.unplaced = unplaced;
       }
+
+      if (collectPareto) {
+        metrics.paretoCandidates += 1;
+        const next = addToParetoFront(paretoFront, createParetoSolution(grid, unplaced));
+        if (next !== paretoFront) metrics.paretoAccepted += 1;
+        paretoFront = next;
+      }
       return;
     }
 
@@ -299,7 +338,6 @@ export function solveBacktracking(
       if (truncated) return;
     }
 
-    // Skipping is an explicit branch: quality before forced completeness.
     explore(grid, rest, [...skipped, entry], depth + 1);
     metrics.backtracks += 1;
   }
@@ -311,5 +349,13 @@ export function solveBacktracking(
     unplaced: best.unplaced,
     metrics,
     truncated,
+    paretoFront,
   };
+}
+
+export function solveParetoBacktracking(
+  entries: readonly Entry[],
+  options: Omit<BacktrackingOptions, 'collectPareto'> = {},
+): BacktrackingResult {
+  return solveBacktracking(entries, { ...options, collectPareto: true });
 }
