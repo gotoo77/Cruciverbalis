@@ -1,4 +1,5 @@
-import type { DomainGrid, Entry } from '../core/domain';
+import type { Entry } from '../core/domain';
+import { measureGridQuality, type GridQuality } from '../quality/grid-quality';
 import { solveBacktracking, type SearchMetrics } from '../solver/backtracking';
 import { solveGreedy } from '../solver/greedy';
 import { benchmarkFixtures, type BenchmarkFixture } from './fixtures';
@@ -15,23 +16,10 @@ export interface BenchmarkRow {
   readonly placed: number;
   readonly unplaced: number;
   readonly area: number;
+  readonly quality: GridQuality;
   readonly elapsedMs: number;
   readonly truncated: boolean;
   readonly metrics?: SearchMetrics;
-}
-
-function gridArea(grid: DomainGrid): number {
-  if (grid.cells.size === 0) return 0;
-
-  const coordinates = [...grid.cells.keys()].map((key) => {
-    const [row = 0, col = 0] = key.split(',').map(Number);
-    return { row, col };
-  });
-  const rows = coordinates.map(({ row }) => row);
-  const cols = coordinates.map(({ col }) => col);
-
-  return (Math.max(...rows) - Math.min(...rows) + 1) *
-    (Math.max(...cols) - Math.min(...cols) + 1);
 }
 
 function timed<T>(operation: () => T): { readonly value: T; readonly elapsedMs: number } {
@@ -47,12 +35,14 @@ function runStrategy(
 ): BenchmarkRow {
   if (strategy === 'greedy') {
     const { value, elapsedMs } = timed(() => solveGreedy(fixture.entries));
+    const quality = measureGridQuality(value.grid);
     return {
       fixtureId: fixture.id,
       strategy,
-      placed: value.grid.placements.length,
+      placed: quality.placedEntries,
       unplaced: value.unplaced.length,
-      area: gridArea(value.grid),
+      area: quality.area,
+      quality,
       elapsedMs,
       truncated: false,
     };
@@ -66,12 +56,14 @@ function runStrategy(
         : { maxNodes, entryOrdering: 'mrv' as const, branchAndBound: true };
 
   const { value, elapsedMs } = timed(() => solveBacktracking(fixture.entries, options));
+  const quality = measureGridQuality(value.grid);
   return {
     fixtureId: fixture.id,
     strategy,
-    placed: value.grid.placements.length,
+    placed: quality.placedEntries,
     unplaced: value.unplaced.length,
-    area: gridArea(value.grid),
+    area: quality.area,
+    quality,
     elapsedMs,
     truncated: value.truncated,
     metrics: value.metrics,
