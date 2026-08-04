@@ -94,6 +94,22 @@ export {
 } from '../artifacts/word-set';
 
 export {
+  CLUE_KINDS,
+  CLUE_SET_SCHEMA,
+  cluesForAnswer,
+  parseClueSetJson,
+  serializeClueSet,
+  validateClueSet,
+  type Clue,
+  type ClueKind,
+  type ClueSet,
+  type ClueSetValidationFailure,
+  type ClueSetValidationIssue,
+  type ClueSetValidationResult,
+  type ClueSetValidationSuccess,
+} from '../artifacts/clue-set';
+
+export {
   analyzeWordSet,
   type WordSetAnalysis,
   type WordSetDifficulty,
