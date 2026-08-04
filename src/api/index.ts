@@ -71,6 +71,14 @@ export {
 } from '../editorial/editorial-policy';
 
 export {
+  explainEditorialDecision,
+  explainParetoRelation,
+  type EditorialDecisionExplanation,
+  type ParetoDecisionExplanation,
+  type QualityMetric,
+} from '../explain/decision-explanation';
+
+export {
   WORD_SET_SCHEMA,
   parseWordSetJson,
   serializeWordSet,
