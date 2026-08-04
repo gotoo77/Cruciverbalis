@@ -17,14 +17,33 @@ function sameQuality(left: GridQuality, right: GridQuality): boolean {
   );
 }
 
-function placementSignature(grid: DomainGrid): string {
+/**
+ * Canonical placement signature invariant under translation.
+ *
+ * Search coordinates are implementation details: moving an otherwise identical
+ * crossword three rows down does not create a meaningfully new solution. We
+ * therefore anchor every grid at (0, 0) before comparing its placements.
+ *
+ * Rotation/reflection are deliberately NOT normalized here. They are a
+ * separate equivalence question because across/down orientation can matter to
+ * consumers and to future editorial criteria.
+ */
+export function translationInvariantPlacementSignature(grid: DomainGrid): string {
+  if (grid.placements.length === 0) return '';
+
+  const minRow = Math.min(...grid.placements.map(({ start }) => start.row));
+  const minCol = Math.min(...grid.placements.map(({ start }) => start.col));
+
   return grid.placements
-    .map(({ entry, start, direction }) => `${entry.answer}@${start.row},${start.col}:${direction}`)
+    .map(
+      ({ entry, start, direction }) =>
+        `${entry.answer}@${start.row - minRow},${start.col - minCol}:${direction}`,
+    )
     .sort()
     .join('|');
 }
 
-/** Maintains an incremental archive of non-dominated solutions. */
+/** Maintains an incremental archive of non-dominated, non-redundant solutions. */
 export function addToParetoFront(
   front: readonly ParetoSolution[],
   candidate: ParetoSolution,
@@ -33,12 +52,12 @@ export function addToParetoFront(
     return front;
   }
 
-  const signature = placementSignature(candidate.grid);
+  const signature = translationInvariantPlacementSignature(candidate.grid);
   if (
     front.some(
       (current) =>
         sameQuality(current.quality, candidate.quality) &&
-        placementSignature(current.grid) === signature,
+        translationInvariantPlacementSignature(current.grid) === signature,
     )
   ) {
     return front;
