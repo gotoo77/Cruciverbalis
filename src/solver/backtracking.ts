@@ -21,11 +21,13 @@ export interface SearchMetrics {
   readonly maxDepth: number;
   readonly mrvSelections: number;
   readonly candidateSetsEvaluated: number;
+  readonly branchesPruned: number;
 }
 
 export interface BacktrackingOptions {
   readonly maxNodes?: number;
   readonly entryOrdering?: EntryOrdering;
+  readonly branchAndBound?: boolean;
 }
 
 export interface BacktrackingResult {
@@ -44,6 +46,7 @@ interface MutableMetrics {
   maxDepth: number;
   mrvSelections: number;
   candidateSetsEvaluated: number;
+  branchesPruned: number;
 }
 
 interface Candidate {
@@ -196,6 +199,18 @@ function isBetter(grid: DomainGrid, unplaced: readonly Entry[], best: SearchBest
   return gridArea(grid) < gridArea(best.grid);
 }
 
+function cannotBeatBest(
+  skippedCount: number,
+  invalidCount: number,
+  best: SearchBest,
+): boolean {
+  // Even in the optimistic case where every pending entry is placed, entries
+  // already skipped (plus invalid input) remain unplaced. If that lower bound
+  // is already worse than the incumbent, this branch cannot win.
+  const minimumPossibleUnplaced = skippedCount + invalidCount;
+  return minimumPossibleUnplaced > best.unplaced.length;
+}
+
 export function solveBacktracking(
   entries: readonly Entry[],
   options: BacktrackingOptions = {},
@@ -217,9 +232,11 @@ export function solveBacktracking(
     maxDepth: 0,
     mrvSelections: 0,
     candidateSetsEvaluated: 0,
+    branchesPruned: 0,
   };
   const maxNodes = options.maxNodes ?? 100_000;
   const entryOrdering = options.entryOrdering ?? 'mrv';
+  const branchAndBound = options.branchAndBound ?? true;
   let truncated = false;
 
   if (normalized.length === 0) {
@@ -248,6 +265,11 @@ export function solveBacktracking(
   function explore(grid: DomainGrid, pending: readonly Entry[], skipped: readonly Entry[], depth: number): void {
     if (metrics.nodesExplored >= maxNodes) {
       truncated = true;
+      return;
+    }
+
+    if (branchAndBound && cannotBeatBest(skipped.length, invalid.length, best)) {
+      metrics.branchesPruned += 1;
       return;
     }
 

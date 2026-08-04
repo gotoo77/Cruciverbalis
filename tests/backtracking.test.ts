@@ -11,6 +11,7 @@ describe('backtracking solver', () => {
     expect(result.grid.placements).toHaveLength(0);
     expect(result.unplaced).toHaveLength(0);
     expect(result.metrics.nodesExplored).toBe(0);
+    expect(result.metrics.branchesPruned).toBe(0);
     expect(result.truncated).toBe(false);
   });
 
@@ -92,6 +93,41 @@ describe('backtracking solver', () => {
     // search tree enough, so comparing global totals is intentionally avoided.
     expect(fixed.metrics.mrvSelections).toBe(0);
     expect(mrv.metrics.candidateSetsEvaluated).toBeGreaterThan(mrv.metrics.mrvSelections);
+  });
+
+  it('prunes branches that cannot beat the incumbent', () => {
+    const entries = [
+      { answer: 'TACHE' },
+      { answer: 'CHAT' },
+      { answer: 'HACHE' },
+      { answer: 'THE' },
+    ];
+
+    const bounded = solveBacktracking(entries, { branchAndBound: true });
+    const exhaustive = solveBacktracking(entries, { branchAndBound: false });
+
+    expect(bounded.metrics.branchesPruned).toBeGreaterThan(0);
+    expect(exhaustive.metrics.branchesPruned).toBe(0);
+    expect(bounded.metrics.nodesExplored).toBeLessThan(exhaustive.metrics.nodesExplored);
+    expect(answers(bounded)).toEqual(answers(exhaustive));
+    expect(bounded.unplaced).toEqual(exhaustive.unplaced);
+  });
+
+  it('does not prune branches that could still tie on completeness and improve compactness', () => {
+    const result = solveBacktracking(
+      [
+        { answer: 'TACHE' },
+        { answer: 'CHAT' },
+        { answer: 'HACHE' },
+        { answer: 'THE' },
+      ],
+      { branchAndBound: true },
+    );
+
+    // The bound is deliberately strict: equality with the incumbent remains
+    // explorable because an equally complete grid may still have a smaller area.
+    expect(result.metrics.solutionsFound).toBeGreaterThan(0);
+    expect(result.truncated).toBe(false);
   });
 
   it('honours the node budget and reports truncation', () => {
