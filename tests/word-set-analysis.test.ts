@@ -30,7 +30,7 @@ describe('WordSet analysis', () => {
   it('marks rare-letter-heavy disconnected sets as hard', () => {
     const analysis = analyzeWordSet(wordSet(['WOK', 'JAZZ', 'LYNX']));
 
-    expect(analysis.rareLetters).toEqual(['J', 'W', 'X', 'Y', 'Z']);
+    expect(analysis.rareLetters).toEqual(['J', 'K', 'W', 'X', 'Y', 'Z']);
     expect(analysis.difficulty).toBe('hard');
   });
 });
