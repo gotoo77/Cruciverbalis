@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { solveBacktracking } from '../src/solver/backtracking';
+import { dominates } from '../src/quality/grid-quality';
+import { solveBacktracking, solveParetoBacktracking } from '../src/solver/backtracking';
 
 const answers = (result: ReturnType<typeof solveBacktracking>) =>
   result.grid.placements.map(({ entry }) => entry.answer).sort();
@@ -12,6 +13,7 @@ describe('backtracking solver', () => {
     expect(result.unplaced).toHaveLength(0);
     expect(result.metrics.nodesExplored).toBe(0);
     expect(result.metrics.branchesPruned).toBe(0);
+    expect(result.paretoFront).toHaveLength(0);
     expect(result.truncated).toBe(false);
   });
 
@@ -87,10 +89,6 @@ describe('backtracking solver', () => {
     const fixed = solveBacktracking(entries, { entryOrdering: 'fixed' });
     const mrv = solveBacktracking(entries, { entryOrdering: 'mrv' });
 
-    // Fixed ordering evaluates exactly one candidate set per decision, whereas
-    // MRV may evaluate several pending entries to choose the most constrained.
-    // MRV can still evaluate fewer candidate sets overall if it shrinks the
-    // search tree enough, so comparing global totals is intentionally avoided.
     expect(fixed.metrics.mrvSelections).toBe(0);
     expect(mrv.metrics.candidateSetsEvaluated).toBeGreaterThan(mrv.metrics.mrvSelections);
   });
@@ -124,10 +122,47 @@ describe('backtracking solver', () => {
       { branchAndBound: true },
     );
 
-    // The bound is deliberately strict: equality with the incumbent remains
-    // explorable because an equally complete grid may still have a smaller area.
     expect(result.metrics.solutionsFound).toBeGreaterThan(0);
     expect(result.truncated).toBe(false);
+  });
+
+  it('maintains a non-dominated Pareto front during exhaustive search', () => {
+    const result = solveParetoBacktracking([
+      { answer: 'TACHE' },
+      { answer: 'CHAT' },
+      { answer: 'HACHE' },
+      { answer: 'THE' },
+    ]);
+
+    expect(result.paretoFront.length).toBeGreaterThan(0);
+    expect(result.metrics.paretoCandidates).toBeGreaterThan(0);
+    expect(result.metrics.paretoAccepted).toBeGreaterThan(0);
+
+    for (let candidateIndex = 0; candidateIndex < result.paretoFront.length; candidateIndex += 1) {
+      const candidate = result.paretoFront[candidateIndex];
+      if (!candidate) continue;
+      for (let otherIndex = 0; otherIndex < result.paretoFront.length; otherIndex += 1) {
+        if (candidateIndex === otherIndex) continue;
+        const other = result.paretoFront[otherIndex];
+        if (!other) continue;
+        expect(dominates(other.quality, candidate.quality)).toBe(false);
+      }
+    }
+  });
+
+  it('disables the scalar branch-and-bound proof while collecting Pareto solutions', () => {
+    const result = solveParetoBacktracking(
+      [
+        { answer: 'TACHE' },
+        { answer: 'CHAT' },
+        { answer: 'HACHE' },
+        { answer: 'THE' },
+      ],
+      { branchAndBound: true },
+    );
+
+    expect(result.metrics.branchesPruned).toBe(0);
+    expect(result.paretoFront.length).toBeGreaterThan(0);
   });
 
   it('honours the node budget and reports truncation', () => {
