@@ -25,23 +25,27 @@ function solution(grid: DomainGrid) {
   return { grid, quality: measureGridQuality(grid) };
 }
 
+function sameQualityDifferentMorphologyPair() {
+  const chat = { answer: 'CHAT' };
+  const tache = { answer: 'TACHE' };
+  const first = solution(gridWith([
+    { entry: chat, row: 0, col: 0, direction: 'across' },
+    { entry: tache, row: 0, col: 3, direction: 'down' },
+  ]));
+
+  // Keep the same declared GridQuality family while changing a morphology
+  // dimension that the current observer actually measures: width 4 -> 5.
+  const secondGrid = gridWith([
+    { entry: tache, row: 0, col: 0, direction: 'across' },
+  ]);
+  const second = { grid: secondGrid, quality: first.quality };
+
+  return { first, second };
+}
+
 describe('pairwise human comparison', () => {
   it('prioritizes different morphologies inside the same quality family', () => {
-    const chat = { answer: 'CHAT' };
-    const tache = { answer: 'TACHE' };
-    const first = solution(gridWith([
-      { entry: chat, row: 0, col: 0, direction: 'across' },
-      { entry: tache, row: 0, col: 3, direction: 'down' },
-    ]));
-
-    // Deliberately reuse the first solution's quality vector so this synthetic
-    // fixture isolates pair selection: the geometry is clearly different while
-    // both candidates belong to the same declared quality family.
-    const secondGrid = gridWith([
-      { entry: chat, row: 0, col: 0, direction: 'across' },
-    ]);
-    const second = { grid: secondGrid, quality: first.quality };
-
+    const { first, second } = sameQualityDifferentMorphologyPair();
     const pairs = createSameQualityComparisonPairs([first, second]);
 
     expect(pairs).toHaveLength(1);
@@ -67,16 +71,7 @@ describe('pairwise human comparison', () => {
   });
 
   it('exports an explicit versioned feedback artifact', () => {
-    const chat = { answer: 'CHAT' };
-    const tache = { answer: 'TACHE' };
-    const first = solution(gridWith([
-      { entry: chat, row: 0, col: 0, direction: 'across' },
-      { entry: tache, row: 0, col: 3, direction: 'down' },
-    ]));
-    const secondGrid = gridWith([
-      { entry: chat, row: 0, col: 0, direction: 'across' },
-    ]);
-    const second = { grid: secondGrid, quality: first.quality };
+    const { first, second } = sameQualityDifferentMorphologyPair();
     const [pair] = createSameQualityComparisonPairs([first, second]);
     if (!pair) throw new Error('expected a comparison pair');
 
