@@ -60,5 +60,15 @@ export {
   type HumanFeedbackCorpusMetricAgreement,
 } from '../feedback/human-feedback-corpus';
 
+export {
+  EDITORIAL_POLICIES,
+  rankByEditorialPolicy,
+  type EditorialCriterionEvaluation,
+  type EditorialPolicy,
+  type EditorialPolicyEvaluation,
+  type EditorialPolicyRanking,
+  type EditorialPreference,
+} from '../editorial/editorial-policy';
+
 export type { Entry } from '../core/domain';
 export type { GridQuality } from '../quality/grid-quality';
