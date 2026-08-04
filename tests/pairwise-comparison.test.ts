@@ -33,9 +33,12 @@ describe('pairwise human comparison', () => {
       { entry: chat, row: 0, col: 0, direction: 'across' },
       { entry: tache, row: 0, col: 3, direction: 'down' },
     ]));
+
+    // Deliberately reuse the first solution's quality vector so this synthetic
+    // fixture isolates pair selection: the geometry is clearly different while
+    // both candidates belong to the same declared quality family.
     const secondGrid = gridWith([
       { entry: chat, row: 0, col: 0, direction: 'across' },
-      { entry: tache, row: -1, col: 2, direction: 'down' },
     ]);
     const second = { grid: secondGrid, quality: first.quality };
 
@@ -72,7 +75,6 @@ describe('pairwise human comparison', () => {
     ]));
     const secondGrid = gridWith([
       { entry: chat, row: 0, col: 0, direction: 'across' },
-      { entry: tache, row: -1, col: 2, direction: 'down' },
     ]);
     const second = { grid: secondGrid, quality: first.quality };
     const [pair] = createSameQualityComparisonPairs([first, second]);
