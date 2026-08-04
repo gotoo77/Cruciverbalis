@@ -43,7 +43,7 @@ describe('PlayableCrossword v1', () => {
   it('composes geometry with one selected clue per answer', () => {
     const grid = gridWith(
       { answer: 'MELON', row: 0, col: 0, direction: 'across' },
-      { answer: 'PASTEQUE', row: 0, col: 1, direction: 'down' },
+      { answer: 'PASTEQUE', row: -4, col: 1, direction: 'down' },
     );
 
     const result = composePlayableCrossword(grid, clues, {
