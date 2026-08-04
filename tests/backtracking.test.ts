@@ -75,7 +75,7 @@ describe('backtracking solver', () => {
     expect(answers(mrv)).toEqual(answers(solveBacktracking(entries)));
   });
 
-  it('evaluates more candidate sets when MRV compares pending entries', () => {
+  it('makes MRV candidate comparison cost observable', () => {
     const entries = [
       { answer: 'TACHE' },
       { answer: 'CHAT' },
@@ -86,9 +86,12 @@ describe('backtracking solver', () => {
     const fixed = solveBacktracking(entries, { entryOrdering: 'fixed' });
     const mrv = solveBacktracking(entries, { entryOrdering: 'mrv' });
 
-    expect(mrv.metrics.candidateSetsEvaluated).toBeGreaterThanOrEqual(
-      fixed.metrics.candidateSetsEvaluated,
-    );
+    // Fixed ordering evaluates exactly one candidate set per decision, whereas
+    // MRV may evaluate several pending entries to choose the most constrained.
+    // MRV can still evaluate fewer candidate sets overall if it shrinks the
+    // search tree enough, so comparing global totals is intentionally avoided.
+    expect(fixed.metrics.mrvSelections).toBe(0);
+    expect(mrv.metrics.candidateSetsEvaluated).toBeGreaterThan(mrv.metrics.mrvSelections);
   });
 
   it('honours the node budget and reports truncation', () => {
