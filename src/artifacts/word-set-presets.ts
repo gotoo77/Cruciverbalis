@@ -3,6 +3,26 @@ import { WORD_SET_SCHEMA, type WordSet } from './word-set';
 export const WORD_SET_PRESETS: readonly WordSet[] = [
   {
     schema: WORD_SET_SCHEMA,
+    id: 'animaux-fr-v1',
+    name: 'Animaux',
+    language: 'fr',
+    description: 'Un corpus accessible de mammifères, oiseaux et animaux familiers.',
+    license: 'CC0-1.0',
+    author: 'Cruciverbalis',
+    entries: [
+      { answer: 'CHAT', theme: 'animaux', difficulty: 1 },
+      { answer: 'CHIEN', theme: 'animaux', difficulty: 1 },
+      { answer: 'RENARD', theme: 'animaux', difficulty: 1 },
+      { answer: 'LION', theme: 'animaux', difficulty: 1 },
+      { answer: 'TIGRE', theme: 'animaux', difficulty: 1 },
+      { answer: 'LOUTRE', theme: 'animaux', difficulty: 2 },
+      { answer: 'PANDA', theme: 'animaux', difficulty: 1 },
+      { answer: 'AIGLE', theme: 'animaux', difficulty: 1 },
+    ],
+    provenance: { createdBy: 'cruciverbalis', source: 'built-in-preset' },
+  },
+  {
+    schema: WORD_SET_SCHEMA,
     id: 'energie-fr-v1',
     name: 'Énergie et choix techniques',
     language: 'fr',
