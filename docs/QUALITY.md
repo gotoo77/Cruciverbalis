@@ -56,8 +56,26 @@ La qualité est multidimensionnelle. Aucun score unique ne doit masquer les arbi
 - difficulté ;
 - plaisir de résolution.
 
-Cruciverbalis devra conserver les composantes du score séparément et, à terme, comparer des candidats sur un front de Pareto plutôt que prétendre qu'une seule métrique résume la qualité.
+Cruciverbalis conserve donc les composantes séparément au lieu de les écraser trop tôt dans une somme pondérée.
+
+### Dimensions structurelles mesurées
+
+La première version de `GridQuality` expose uniquement des propriétés objectives de la géométrie :
+
+- `placedEntries` : nombre de réponses placées, à maximiser ;
+- `crossings` : nombre de cases réellement croisées, à maximiser ;
+- `area` : aire de la boîte englobante, à minimiser ;
+- `density` : proportion de cases occupées dans cette boîte, à maximiser ;
+- `directionBalance` : équilibre entre réponses horizontales et verticales, à maximiser.
+
+Aucune pondération n'est définie à ce stade. Dire que « +1 croisement vaut -3 cases d'aire » serait une préférence éditoriale arbitraire, pas une propriété du domaine.
+
+### Dominance et front de Pareto
+
+Une grille A domine une grille B si A n'est moins bonne sur aucun objectif et est strictement meilleure sur au moins un. Deux grilles peuvent donc être toutes deux pertinentes lorsqu'elles réalisent des compromis différents.
+
+Exemple : une grille peut placer un mot de plus mais être plus étalée, tandis qu'une autre peut être plus compacte et mieux croisée. Tant qu'aucune préférence éditoriale explicite ne tranche ce compromis, Cruciverbalis doit conserver les deux sur le front de Pareto plutôt que prétendre qu'un score magique désigne une gagnante absolue.
 
 ## Limite explicite
 
-Le moteur structurel ne décide pas seul qu'une grille est bonne. Il garantit qu'elle est valide. La qualité éditoriale relève d'une évaluation distincte, potentiellement assistée par Delibra et confirmée par des retours humains.
+Le moteur structurel ne décide pas seul qu'une grille est bonne. Il garantit qu'elle est valide et mesure quelques propriétés objectives. La qualité lexicale, éditoriale et le plaisir de résolution relèvent d'une évaluation distincte, potentiellement assistée par Delibra et confirmée par des retours humains.
