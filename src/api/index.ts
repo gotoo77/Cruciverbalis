@@ -53,5 +53,12 @@ export {
   type HumanPreferenceDirection,
 } from '../feedback/human-feedback-analysis';
 
+export {
+  analyzeHumanFeedbackCorpus,
+  type HumanFeedbackCorpusAnalysis,
+  type HumanFeedbackCorpusEntry,
+  type HumanFeedbackCorpusMetricAgreement,
+} from '../feedback/human-feedback-corpus';
+
 export type { Entry } from '../core/domain';
 export type { GridQuality } from '../quality/grid-quality';
