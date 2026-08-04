@@ -27,6 +27,8 @@ describe('backtracking solver', () => {
     expect(result.metrics.placementsTried).toBeGreaterThan(0);
     expect(result.metrics.backtracks).toBeGreaterThan(0);
     expect(result.metrics.solutionsFound).toBeGreaterThan(0);
+    expect(result.metrics.mrvSelections).toBeGreaterThan(0);
+    expect(result.metrics.candidateSetsEvaluated).toBeGreaterThan(0);
   });
 
   it('keeps disconnected entries explicit instead of inventing filler', () => {
@@ -54,6 +56,42 @@ describe('backtracking solver', () => {
     expect(first.grid.placements).toEqual(second.grid.placements);
     expect(first.unplaced).toEqual(second.unplaced);
     expect(first.metrics).toEqual(second.metrics);
+  });
+
+  it('can retain the historical fixed ordering for comparison', () => {
+    const entries = [
+      { answer: 'MAISON' },
+      { answer: 'SOURIS' },
+      { answer: 'RAISON' },
+      { answer: 'MARS' },
+      { answer: 'SOIN' },
+    ];
+
+    const fixed = solveBacktracking(entries, { entryOrdering: 'fixed' });
+    const mrv = solveBacktracking(entries, { entryOrdering: 'mrv' });
+
+    expect(fixed.metrics.mrvSelections).toBe(0);
+    expect(mrv.metrics.mrvSelections).toBeGreaterThan(0);
+    expect(answers(mrv)).toEqual(answers(solveBacktracking(entries)));
+  });
+
+  it('makes MRV candidate comparison cost observable', () => {
+    const entries = [
+      { answer: 'TACHE' },
+      { answer: 'CHAT' },
+      { answer: 'HACHE' },
+      { answer: 'THE' },
+    ];
+
+    const fixed = solveBacktracking(entries, { entryOrdering: 'fixed' });
+    const mrv = solveBacktracking(entries, { entryOrdering: 'mrv' });
+
+    // Fixed ordering evaluates exactly one candidate set per decision, whereas
+    // MRV may evaluate several pending entries to choose the most constrained.
+    // MRV can still evaluate fewer candidate sets overall if it shrinks the
+    // search tree enough, so comparing global totals is intentionally avoided.
+    expect(fixed.metrics.mrvSelections).toBe(0);
+    expect(mrv.metrics.candidateSetsEvaluated).toBeGreaterThan(mrv.metrics.mrvSelections);
   });
 
   it('honours the node budget and reports truncation', () => {
