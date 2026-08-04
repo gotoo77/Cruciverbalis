@@ -44,9 +44,12 @@ describe('Pareto solution equivalence', () => {
       { entry: chat, row: 0, col: 0, direction: 'across' },
       { entry: tache, row: 0, col: 3, direction: 'down' },
     ]);
+    // Same words and orientations, but TACHE crosses the A at CHAT[2]
+    // instead of the T at CHAT[3]. Both fixtures are valid, while their
+    // relative placement cannot be obtained by translating the whole grid.
     const different = gridWith([
-      { entry: tache, row: 0, col: 0, direction: 'across' },
-      { entry: chat, row: 0, col: 0, direction: 'down' },
+      { entry: chat, row: 0, col: 0, direction: 'across' },
+      { entry: tache, row: 0, col: 2, direction: 'down' },
     ]);
 
     expect(translationInvariantPlacementSignature(different)).not.toBe(
