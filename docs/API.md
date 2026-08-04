@@ -2,7 +2,7 @@
 
 L'interface publique de Cruciverbalis est volontairement plus petite que ses solveurs internes.
 
-Les consommateurs applicatifs (notamment la future GitHub Page) doivent importer depuis `src/api` plutôt que dépendre directement de `solver/greedy`, `solver/backtracking` ou de l'archive Pareto.
+Les consommateurs applicatifs — notamment la GitHub Page — doivent importer depuis `src/api` plutôt que dépendre directement de `solver/greedy`, `solver/backtracking` ou de l'archive Pareto.
 
 ```ts
 import { generate } from './api';
@@ -38,6 +38,8 @@ Chaque solution expose la grille, les entrées non placées et son vecteur `Grid
 
 ## Frontière d'architecture
 
-Cette API est une façade, pas un nouveau solveur. Elle protège l'interface utilisateur des changements internes de stratégie et constitue le contrat à stabiliser avant la première GitHub Page.
+Cette API est une façade, pas un nouveau solveur. Elle protège l'interface utilisateur des changements internes de stratégie et constitue le contrat consommé par la GitHub Page interactive.
 
-Les types internes restent accessibles au moteur et aux tests spécialisés, mais le code d'interface ne doit pas les appeler directement sans raison explicite.
+Cette frontière doit également permettre à de futurs consommateurs — exporteurs, éditeurs ou intégrations d'orchestration comme Delibra — d'utiliser Cruciverbalis sans dépendre des détails des solveurs.
+
+Les types internes restent accessibles au moteur et aux tests spécialisés, mais le code applicatif ne doit pas les appeler directement sans raison explicite.
