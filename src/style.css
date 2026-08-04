@@ -64,8 +64,9 @@ button.secondary { background: var(--soft); color: var(--ink); border: 1px solid
 .success { background: #e7f1e7; color: #235827; }
 .empty { color: var(--muted); }
 
-.search-details { margin-top: 1rem; border-top: 1px solid var(--line); padding-top: 1rem; }
-.search-details summary { cursor: pointer; font-weight: 800; }
+.search-details, .morphology-details { margin-top: 1rem; border-top: 1px solid var(--line); padding-top: 1rem; }
+.search-details summary, .morphology-details summary { cursor: pointer; font-weight: 800; }
+.morphology-details .search-note { margin: .7rem 0 0; font-size: .82rem; }
 .search-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .55rem; margin-top: .8rem; }
 .search-grid span { padding: .65rem; border: 1px solid var(--line); border-radius: .65rem; color: var(--muted); font-size: .82rem; }
 .search-grid strong { display: block; color: var(--ink); font-size: 1rem; }

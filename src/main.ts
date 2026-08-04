@@ -1,7 +1,9 @@
 import './style.css';
 import {
   analyzeParetoFront,
+  analyzeParetoMorphology,
   generate,
+  measureGridMorphology,
   type Entry,
   type GeneratedGrid,
   type GenerationResult,
@@ -101,21 +103,41 @@ function renderQuality(solution: GeneratedGrid): string {
   `;
 }
 
+function renderMorphology(solution: GeneratedGrid): string {
+  const morphology = measureGridMorphology(solution.grid);
+  return `
+    <details class="morphology-details">
+      <summary>Voir la morphologie descriptive</summary>
+      <div class="search-grid">
+        <span>Dimensions <strong>${morphology.width} × ${morphology.height}</strong></span>
+        <span>Ratio d’aspect <strong>${morphology.aspectRatio.toFixed(2)}</strong></span>
+        <span>Bords exposés <strong>${morphology.exposedEdges}</strong></span>
+        <span>Entrées feuilles <strong>${morphology.leafEntries}</strong></span>
+        <span>Degré max <strong>${morphology.maxEntryDegree}</strong></span>
+        <span>Diamètre graphe <strong>${morphology.graphDiameter}</strong></span>
+      </div>
+      <p class="search-note">Ces métriques décrivent la forme ; elles ne participent pas encore à la dominance de Pareto.</p>
+    </details>
+  `;
+}
+
 function renderParetoAnalysis(result: GenerationResult): string {
   if (result.strategy !== 'pareto') return '';
 
-  const analysis = analyzeParetoFront(result.solutions);
-  const repeated = analysis.repeatedQualityProfileCount === 0
+  const quality = analyzeParetoFront(result.solutions);
+  const morphology = analyzeParetoMorphology(result.solutions);
+  const repeated = quality.repeatedQualityProfileCount === 0
     ? 'aucun profil de qualité répété'
-    : `${analysis.repeatedQualityProfileCount} profil${analysis.repeatedQualityProfileCount > 1 ? 's' : ''} de qualité répété${analysis.repeatedQualityProfileCount > 1 ? 's' : ''}, regroupant ${analysis.solutionsInRepeatedProfiles} solutions`;
+    : `${quality.repeatedQualityProfileCount} profil${quality.repeatedQualityProfileCount > 1 ? 's' : ''} de qualité répété${quality.repeatedQualityProfileCount > 1 ? 's' : ''}, regroupant ${quality.solutionsInRepeatedProfiles} solutions`;
 
   return `
     <div class="pareto-summary">
       <strong>Cartographie du front :</strong>
-      ${analysis.solutionCount} solution${analysis.solutionCount > 1 ? 's' : ''},
-      ${analysis.qualityProfileCount} profil${analysis.qualityProfileCount > 1 ? 's' : ''} de qualité distinct${analysis.qualityProfileCount > 1 ? 's' : ''},
+      ${quality.solutionCount} solution${quality.solutionCount > 1 ? 's' : ''},
+      ${quality.qualityProfileCount} profil${quality.qualityProfileCount > 1 ? 's' : ''} de qualité distinct${quality.qualityProfileCount > 1 ? 's' : ''},
       ${repeated}.
-      <span>Même profil ne signifie pas même grille.</span>
+      <span>${morphology.morphologyProfileCount} profil${morphology.morphologyProfileCount > 1 ? 's' : ''} morphologique${morphology.morphologyProfileCount > 1 ? 's' : ''} observé${morphology.morphologyProfileCount > 1 ? 's' : ''} ; ${morphology.qualityProfilesSplitByMorphology} profil${morphology.qualityProfilesSplitByMorphology > 1 ? 's' : ''} de qualité se divis${morphology.qualityProfilesSplitByMorphology > 1 ? 'ent' : 'e'} en plusieurs formes.</span>
+      <span>Même qualité et même morphologie mesurée ne signifient toujours pas nécessairement même grille.</span>
     </div>
   `;
 }
@@ -165,6 +187,7 @@ function renderSolution(result: GenerationResult, index: number): string {
     ${renderQuality(solution)}
     ${renderGrid(solution)}
     ${unplaced}
+    ${renderMorphology(solution)}
     ${result.truncated ? '<p class="warning"><strong>Recherche tronquée :</strong> le budget de nœuds a été atteint.</p>' : ''}
     ${renderSearch(result)}
   `;
