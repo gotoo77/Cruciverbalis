@@ -52,39 +52,48 @@ function installDatasetCatalog(): void {
   const textarea = document.querySelector<HTMLTextAreaElement>('#entries');
   if (!textarea || document.querySelector('#dataset-catalog')) return;
 
-  const catalog = document.createElement('section');
+  const catalog = document.createElement('details');
   catalog.id = 'dataset-catalog';
   catalog.className = 'dataset-catalog';
   catalog.innerHTML = `
-    <div class="dataset-catalog-heading">
-      <div>
-        <p class="eyebrow">Matériaux reproductibles</p>
-        <h3>Catalogue de WordSets</h3>
+    <summary class="dataset-catalog-summary">
+      <span>
+        <span class="eyebrow">Matériaux reproductibles</span>
+        <strong>WordSets disponibles</strong>
+      </span>
+      <span class="dataset-count">${WORD_SET_PRESETS.length} preset${WORD_SET_PRESETS.length > 1 ? 's' : ''}</span>
+    </summary>
+    <div class="dataset-catalog-content">
+      <div class="dataset-catalog-heading">
+        <div>
+          <h3>Catalogue de WordSets</h3>
+          <p class="search-note">Choisis un corpus pour remplacer la liste éditable, ou analyse directement ta liste courante.</p>
+        </div>
+        <button type="button" class="secondary" id="analyze-current-word-set">Analyser la liste courante</button>
       </div>
-      <button type="button" class="secondary" id="analyze-current-word-set">Analyser la liste courante</button>
+      <div class="dataset-cards">
+        ${WORD_SET_PRESETS.map((preset) => {
+          const analysis = analyzeWordSet(preset);
+          return `
+            <button type="button" class="dataset-card" data-load-dataset="${preset.id}" aria-label="Charger le WordSet ${preset.name}">
+              <span class="dataset-card-copy">
+                <span class="dataset-language">${preset.language.toLocaleUpperCase()}</span>
+                <strong class="dataset-card-title">${preset.name}</strong>
+                <span class="dataset-description">${preset.description ?? ''}</span>
+              </span>
+              <span class="dataset-stats" aria-hidden="true">
+                <span>Mots <strong>${analysis.entryCount}</strong></span>
+                <span>Moyenne <strong>${analysis.averageLength.toFixed(1)}</strong></span>
+                <span>Difficulté <strong>${difficultyLabel[analysis.difficulty]}</strong></span>
+              </span>
+              <span class="dataset-meta">${preset.author ?? 'Auteur inconnu'} · ${preset.license ?? 'Licence non précisée'}</span>
+              <span class="dataset-load-hint" aria-hidden="true">Charger ce WordSet →</span>
+            </button>
+          `;
+        }).join('')}
+      </div>
+      <div id="dataset-analysis" class="dataset-analysis" hidden></div>
     </div>
-    <div class="dataset-cards">
-      ${WORD_SET_PRESETS.map((preset) => {
-        const analysis = analyzeWordSet(preset);
-        return `
-          <article class="dataset-card">
-            <div>
-              <span class="dataset-language">${preset.language.toLocaleUpperCase()}</span>
-              <h4>${preset.name}</h4>
-              <p>${preset.description ?? ''}</p>
-            </div>
-            <dl>
-              <div><dt>Mots</dt><dd>${analysis.entryCount}</dd></div>
-              <div><dt>Moyenne</dt><dd>${analysis.averageLength.toFixed(1)}</dd></div>
-              <div><dt>Difficulté</dt><dd>${difficultyLabel[analysis.difficulty]}</dd></div>
-            </dl>
-            <p class="dataset-meta">${preset.author ?? 'Auteur inconnu'} · ${preset.license ?? 'Licence non précisée'}</p>
-            <button type="button" class="secondary" data-load-dataset="${preset.id}">Charger</button>
-          </article>
-        `;
-      }).join('')}
-    </div>
-    <div id="dataset-analysis" class="dataset-analysis" hidden></div>
   `;
 
   const tools = document.querySelector('#word-set-tools');
@@ -102,7 +111,8 @@ function installDatasetCatalog(): void {
       textarea.value = preset.entries.map(({ answer }) => answer).join('\n');
       textarea.dispatchEvent(new Event('input', { bubbles: true }));
       analysisPanel.hidden = false;
-      analysisPanel.innerHTML = `<h4>${preset.name}</h4>${renderAnalysis(preset)}`;
+      analysisPanel.innerHTML = `<h4>${preset.name} chargé</h4>${renderAnalysis(preset)}`;
+      if (window.matchMedia('(max-width: 760px)').matches) catalog.open = false;
       textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
   });
