@@ -16,6 +16,7 @@ export { EDITORIAL_POLICIES, rankByEditorialPolicy, type EditorialCriterionEvalu
 export { explainEditorialDecision, explainParetoRelation, type EditorialDecisionExplanation, type ParetoDecisionExplanation, type QualityMetric } from '../explain/decision-explanation';
 export { WORD_SET_SCHEMA, parseWordSetJson, serializeWordSet, validateWordSet, wordSetToEntries, type ArtifactProvenance, type WordSet, type WordSetEntry, type WordSetValidationFailure, type WordSetValidationIssue, type WordSetValidationResult, type WordSetValidationSuccess } from '../artifacts/word-set';
 export { CLUE_KINDS, CLUE_SET_SCHEMA, cluesForAnswer, parseClueSetJson, serializeClueSet, validateClueSet, type Clue, type ClueKind, type ClueSet, type ClueSetValidationFailure, type ClueSetValidationIssue, type ClueSetValidationResult, type ClueSetValidationSuccess } from '../artifacts/clue-set';
+export { analyzeClueCoverage, type ClueCoverage } from '../artifacts/clue-coverage';
 export { PLAYABLE_CROSSWORD_SCHEMA, composePlayableCrossword, parsePlayableCrosswordJson, serializePlayableCrossword, validatePlayableCrossword, type ClueSelection, type ComposePlayableCrosswordOptions, type ComposePlayableCrosswordResult, type PlayableClue, type PlayableCrossword, type PlayableCrosswordIssue, type PlayableCrosswordValidationResult, type PlayableEntry } from '../artifacts/playable-crossword';
 export { SOLVE_FEEDBACK_SCHEMA, parseSolveFeedbackJson, serializeSolveFeedback, validateSolveFeedback, type SolveDifficultyRating, type SolveEnjoymentRating, type SolveFeedback, type SolveFeedbackIssue, type SolveFeedbackValidationResult } from '../artifacts/solve-feedback';
 export { LEXICON_SCHEMA, lexiconToCandidates, parseLexiconJson, serializeLexicon, validateLexicon, type Lexicon, type LexiconEntry, type LexiconValidationIssue, type LexiconValidationResult } from '../artifacts/lexicon';
@@ -24,5 +25,6 @@ export { candidatesForSlot, detectFillSlots, fillSeedGrid, type FillPassOptions,
 export { DEFAULT_LEXICAL_QUALITY_POLICY, normalizeLexicon, scoreLexicalCandidate, type LexicalCandidate, type LexicalQualityPolicy, type ScoredLexicalCandidate } from '../fill/lexical-quality';
 export { analyzeWordSet, type WordSetAnalysis, type WordSetDifficulty } from '../artifacts/word-set-analysis';
 export { WORD_SET_PRESETS, findWordSetPreset } from '../artifacts/word-set-presets';
+export { CLUE_SET_PRESETS, findClueSetPreset } from '../artifacts/clue-set-presets';
 export type { Entry } from '../core/domain';
 export type { GridQuality } from '../quality/grid-quality';
