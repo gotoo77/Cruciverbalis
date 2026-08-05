@@ -3,16 +3,23 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Cruciverbalis — forge de mots croisés de qualité" />
+    <meta name="description" content="Cruciverbalis — atelier de création de mots croisés" />
+    <link rel="stylesheet" href="/src/app-shell.css" />
     <link rel="stylesheet" href="/src/dataset-catalog.css" />
     <link rel="stylesheet" href="/src/decision-explainer.css" />
     <link rel="stylesheet" href="/src/clue-set-playground.css" />
     <link rel="stylesheet" href="/src/playable-crossword-composer.css" />
-    <link rel="stylesheet" href="/src/playable-crossword-player.css" />
     <link rel="stylesheet" href="/src/fillpass-playground.css" />
-    <title>Cruciverbalis</title>
+    <title>Cruciverbalis — Atelier</title>
   </head>
   <body>
+    <header class="app-header">
+      <a class="app-brand" href="/Cruciverbalis/" aria-label="Cruciverbalis, accueil">Cruciverbalis</a>
+      <nav class="app-nav" aria-label="Navigation principale">
+        <a class="active" href="/Cruciverbalis/" aria-current="page">Construire</a>
+        <a href="/Cruciverbalis/play/">Jouer</a>
+      </nav>
+    </header>
     <main id="app"></main>
     <script type="module" src="/src/main.ts"></script>
     <script type="module" src="/src/word-set-playground.ts"></script>
@@ -21,7 +28,6 @@
     <script type="module" src="/src/decision-explainer.ts"></script>
     <script type="module" src="/src/clue-set-playground.ts"></script>
     <script type="module" src="/src/playable-crossword-composer.ts"></script>
-    <script type="module" src="/src/playable-crossword-player.ts"></script>
     <script type="module" src="/src/fillpass-playground.ts"></script>
   </body>
 </html>
