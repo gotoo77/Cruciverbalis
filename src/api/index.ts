@@ -23,7 +23,7 @@ export { LEXICON_SCHEMA, lexiconToCandidates, parseLexiconJson, serializeLexicon
 export { importLexique4Tsv, type Lexique4ImportIssue, type Lexique4ImportOptions, type Lexique4ImportResult } from '../lexicons/lexique4-adapter';
 export { candidatesForSlot, detectFillSlots, fillSeedGrid, type FillPassOptions, type FillPassResult, type FillPassStats, type FillSlot } from '../fill/fill-pass';
 export { DEFAULT_LEXICAL_QUALITY_POLICY, normalizeLexicon, scoreLexicalCandidate, type LexicalCandidate, type LexicalQualityPolicy, type ScoredLexicalCandidate } from '../fill/lexical-quality';
-export { analyzeWordSet, type WordSetAnalysis, type WordSetDifficulty } from '../artifacts/word-set-analysis';
+export { analyzeWordSet, type SearchComplexity, type WordSetAnalysis, type WordSetDifficulty } from '../artifacts/word-set-analysis';
 export { WORD_SET_PRESETS, findWordSetPreset } from '../artifacts/word-set-presets';
 export { CLUE_SET_PRESETS, findClueSetPreset } from '../artifacts/clue-set-presets';
 export type { Entry, Placement } from '../core/domain';
