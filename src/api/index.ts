@@ -126,6 +126,18 @@ export {
 } from '../artifacts/playable-crossword';
 
 export {
+  SOLVE_FEEDBACK_SCHEMA,
+  parseSolveFeedbackJson,
+  serializeSolveFeedback,
+  validateSolveFeedback,
+  type SolveDifficultyRating,
+  type SolveEnjoymentRating,
+  type SolveFeedback,
+  type SolveFeedbackIssue,
+  type SolveFeedbackValidationResult,
+} from '../artifacts/solve-feedback';
+
+export {
   analyzeWordSet,
   type WordSetAnalysis,
   type WordSetDifficulty,
