@@ -26,6 +26,7 @@ export interface SearchMetrics {
   readonly maxDepth: number;
   readonly mrvSelections: number;
   readonly candidateSetsEvaluated: number;
+  readonly candidateAnchorsEvaluated: number;
   readonly branchesPruned: number;
   readonly paretoCandidates: number;
   readonly paretoAccepted: number;
@@ -60,6 +61,7 @@ interface MutableMetrics {
   maxDepth: number;
   mrvSelections: number;
   candidateSetsEvaluated: number;
+  candidateAnchorsEvaluated: number;
   branchesPruned: number;
   paretoCandidates: number;
   paretoAccepted: number;
@@ -70,6 +72,11 @@ interface Candidate {
   readonly placement: Placement;
   readonly crossings: number;
   readonly area: number;
+}
+
+interface CrossingAnchor {
+  readonly coordinate: Coordinate;
+  readonly direction: Direction;
 }
 
 interface SelectedEntry {
@@ -119,26 +126,51 @@ function crossingCount(grid: DomainGrid, placement: Placement): number {
   return count;
 }
 
-function candidatesFor(grid: DomainGrid, entry: Entry): Candidate[] {
+function buildCrossingIndex(grid: DomainGrid): ReadonlyMap<string, readonly CrossingAnchor[]> {
+  const index = new Map<string, CrossingAnchor[]>();
+
+  for (const placement of grid.placements) {
+    const direction = opposite(placement.direction);
+    for (let letterIndex = 0; letterIndex < placement.entry.answer.length; letterIndex += 1) {
+      const letter = placement.entry.answer.charAt(letterIndex);
+      const anchors = index.get(letter) ?? [];
+      anchors.push({ coordinate: coordinateAt(placement, letterIndex), direction });
+      index.set(letter, anchors);
+    }
+  }
+
+  return index;
+}
+
+function entryLetterPositions(entry: Entry): ReadonlyMap<string, readonly number[]> {
+  const index = new Map<string, number[]>();
+  for (let letterIndex = 0; letterIndex < entry.answer.length; letterIndex += 1) {
+    const letter = entry.answer.charAt(letterIndex);
+    const positions = index.get(letter) ?? [];
+    positions.push(letterIndex);
+    index.set(letter, positions);
+  }
+  return index;
+}
+
+function candidatesFor(grid: DomainGrid, entry: Entry, metrics: MutableMetrics): Candidate[] {
   const candidates: Candidate[] = [];
   const seen = new Set<string>();
+  const crossingIndex = buildCrossingIndex(grid);
 
-  for (const existingPlacement of grid.placements) {
-    const direction = opposite(existingPlacement.direction);
+  for (const [letter, positions] of entryLetterPositions(entry)) {
+    const anchors = crossingIndex.get(letter);
+    if (!anchors) continue;
 
-    for (let existingIndex = 0; existingIndex < existingPlacement.entry.answer.length; existingIndex += 1) {
-      const coordinate = coordinateAt(existingPlacement, existingIndex);
-      const sharedLetter = existingPlacement.entry.answer.charAt(existingIndex);
-
-      for (let entryIndex = 0; entryIndex < entry.answer.length; entryIndex += 1) {
-        if (entry.answer.charAt(entryIndex) !== sharedLetter) continue;
-
-        const start = startForCrossing(coordinate, direction, entryIndex);
-        const key = `${start.row},${start.col},${direction}`;
+    for (const anchor of anchors) {
+      for (const entryIndex of positions) {
+        metrics.candidateAnchorsEvaluated += 1;
+        const start = startForCrossing(anchor.coordinate, anchor.direction, entryIndex);
+        const key = `${start.row},${start.col},${anchor.direction}`;
         if (seen.has(key)) continue;
         seen.add(key);
 
-        const placement: Placement = { entry, start, direction };
+        const placement: Placement = { entry, start, direction: anchor.direction };
         const result = placeEntry(grid, placement);
         if (!result.ok) continue;
 
@@ -171,7 +203,7 @@ function selectNextEntry(
     const [entry, ...rest] = pending;
     if (!entry) return undefined;
     metrics.candidateSetsEvaluated += 1;
-    return { entry, rest, candidates: candidatesFor(grid, entry) };
+    return { entry, rest, candidates: candidatesFor(grid, entry, metrics) };
   }
 
   let selectedIndex = -1;
@@ -181,7 +213,7 @@ function selectNextEntry(
     const entry = pending[index];
     if (!entry) continue;
 
-    const candidates = candidatesFor(grid, entry);
+    const candidates = candidatesFor(grid, entry, metrics);
     metrics.candidateSetsEvaluated += 1;
 
     if (
@@ -245,6 +277,7 @@ export function solveBacktracking(
     maxDepth: 0,
     mrvSelections: 0,
     candidateSetsEvaluated: 0,
+    candidateAnchorsEvaluated: 0,
     branchesPruned: 0,
     paretoCandidates: 0,
     paretoAccepted: 0,
@@ -252,8 +285,6 @@ export function solveBacktracking(
   const maxNodes = options.maxNodes ?? 100_000;
   const entryOrdering = options.entryOrdering ?? 'mrv';
   const collectPareto = options.collectPareto ?? false;
-  // The existing bound optimizes completeness first and is therefore not a
-  // valid pruning proof for the complete multidimensional Pareto objective.
   const branchAndBound = (options.branchAndBound ?? true) && !collectPareto;
   let truncated = false;
   let paretoFront: readonly ParetoSolution[] = [];
