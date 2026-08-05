@@ -9,10 +9,7 @@ import {
 } from './api';
 
 function parseEntries(value: string): Entry[] {
-  return value
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean)
+  return value.split(/\r?\n/).map((line) => line.trim()).filter(Boolean)
     .map((line) => ({ answer: (line.split('|')[0] ?? '').trim() }))
     .filter(({ answer }) => answer.length > 0);
 }
@@ -23,22 +20,24 @@ function installDecisionExplainer(): void {
   const resultPanel = document.querySelector<HTMLElement>('.panel.result');
   if (!resultPanel || document.querySelector('#decision-explainer')) return;
 
-  const section = document.createElement('section');
+  const section = document.createElement('details');
   section.id = 'decision-explainer';
   section.className = 'decision-explainer';
   section.innerHTML = `
-    <div class="decision-explainer-heading">
-      <div>
-        <p class="eyebrow">Explicabilité</p>
-        <h3>Pourquoi ce classement ?</h3>
+    <summary class="decision-explainer-summary">
+      <span><span class="eyebrow">Explicabilité</span><strong>Pourquoi ce classement ?</strong></span>
+      <span class="decision-summary-meta">déterministe</span>
+    </summary>
+    <div class="decision-explainer-content">
+      <div class="decision-explainer-heading">
+        <p class="search-note">Compare les deux premières solutions avec une politique éditoriale explicite et la relation de Pareto.</p>
+        <select id="explanation-policy" aria-label="Politique éditoriale">
+          ${policies.map((policy) => `<option value="${policy.id}">${policy.name}</option>`).join('')}
+        </select>
       </div>
-      <select id="explanation-policy" aria-label="Politique éditoriale">
-        ${policies.map((policy) => `<option value="${policy.id}">${policy.name}</option>`).join('')}
-      </select>
+      <button type="button" class="secondary" id="explain-decision">Pourquoi ?</button>
+      <div id="decision-explanation" class="decision-explanation" aria-live="polite"></div>
     </div>
-    <p class="search-note">Le moteur compare les deux premières solutions avec des règles déterministes.</p>
-    <button type="button" class="secondary" id="explain-decision">Pourquoi ?</button>
-    <div id="decision-explanation" class="decision-explanation" aria-live="polite"></div>
   `;
 
   resultPanel.append(section);
@@ -68,10 +67,7 @@ function installDecisionExplainer(): void {
     const policy = policies.find(({ id }) => id === policySelect.value) ?? policies[0];
     if (!policy) return;
     const editorial = explainEditorialDecision(result.solutions, policy);
-    const pareto = explainParetoRelation(
-      result.solutions[0]!.quality,
-      result.solutions[1]!.quality,
-    );
+    const pareto = explainParetoRelation(result.solutions[0]!.quality, result.solutions[1]!.quality);
 
     output.innerHTML = `
       <article><strong>Politique éditoriale</strong><p>${editorial?.message ?? 'Aucune explication éditoriale disponible.'}</p></article>

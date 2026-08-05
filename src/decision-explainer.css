@@ -1,9 +1,20 @@
-.decision-explainer { margin-top: 1.4rem; padding-top: 1.25rem; border-top: 2px solid var(--border); }
+.decision-explainer { margin-top: 1rem; border: 1px solid var(--border); border-radius: .9rem; background: var(--surface-raised); overflow: clip; }
+.decision-explainer-summary { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem; cursor: pointer; list-style: none; }
+.decision-explainer-summary::-webkit-details-marker { display: none; }
+.decision-explainer-summary::after { content: '›'; flex: none; color: var(--muted); font-size: 1.5rem; transform: rotate(90deg); transition: transform .15s ease; }
+.decision-explainer[open] > .decision-explainer-summary::after { transform: rotate(-90deg); }
+.decision-explainer-summary:hover { background: var(--surface-soft); }
+.decision-explainer-summary > span:first-child { display: grid; gap: .2rem; }
+.decision-explainer-summary .eyebrow { margin: 0; }
+.decision-summary-meta { margin-left: auto; padding: .3rem .55rem; border-radius: 999px; background: var(--surface-soft); color: var(--muted); font-size: .75rem; font-weight: 800; }
+.decision-explainer-content { padding: 1rem; border-top: 1px solid var(--border); }
 .decision-explainer-heading { display: flex; align-items: end; justify-content: space-between; gap: 1rem; margin-bottom: .7rem; }
+.decision-explainer-heading .search-note { margin: 0; max-width: 38rem; }
 .decision-explainer-heading select { width: min(16rem, 100%); }
 .decision-explanation { display: grid; gap: .65rem; margin-top: .8rem; }
 .decision-explanation:empty { display: none; }
-.decision-explanation article { padding: .8rem; border: 1px solid var(--border); border-radius: .75rem; background: var(--surface-raised); color: var(--text); }
+.decision-explanation article { padding: .8rem; border: 1px solid var(--border); border-radius: .75rem; background: var(--surface); color: var(--text); }
 .decision-explanation article p { margin: .35rem 0 0; color: var(--muted); line-height: 1.5; }
 .decision-explanation > .search-note { margin: 0; font-size: .82rem; }
 @media (max-width: 600px) { .decision-explainer-heading { align-items: stretch; flex-direction: column; } .decision-explainer-heading select { width: 100%; } }
+@media (max-width: 430px) { .decision-explainer-summary, .decision-explainer-content { padding: .85rem; } }
