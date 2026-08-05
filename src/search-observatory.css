@@ -1,8 +1,8 @@
-.search-observatory { margin-top: 1rem; padding: .9rem; border: 1px solid var(--line); border-radius: .75rem; background: #faf8f2; }
+.search-observatory { margin-top: 1rem; padding: .9rem; border: 1px solid var(--border); border-radius: .75rem; background: var(--surface-raised); color: var(--text); }
 .search-observatory h4 { margin: 0 0 .8rem; }
 .search-observatory-bars { display: grid; gap: .55rem; }
 .search-observatory-bars span { display: grid; grid-template-columns: minmax(7rem, auto) 1fr auto; align-items: center; gap: .55rem; }
-.search-observatory-bars i { grid-column: 2; grid-row: 1; width: calc(var(--value) * 100%); min-width: 2px; height: .55rem; border-radius: 999px; background: var(--ink); opacity: .72; }
+.search-observatory-bars i { grid-column: 2; grid-row: 1; width: calc(var(--value) * 100%); min-width: 2px; height: .55rem; border-radius: 999px; background: var(--accent); opacity: .85; }
 .search-observatory-bars b { grid-column: 1; grid-row: 1; font-size: .82rem; }
 .search-observatory-bars strong { grid-column: 3; grid-row: 1; font-size: .82rem; }
 .search-observatory ul { margin: .9rem 0 .6rem; padding-left: 1.2rem; color: var(--muted); line-height: 1.45; }
