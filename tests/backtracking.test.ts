@@ -16,6 +16,9 @@ describe('backtracking solver', () => {
     expect(result.metrics.candidateAnchorsEvaluated).toBe(0);
     expect(result.metrics.crossingIndexesBuilt).toBe(0);
     expect(result.metrics.entryLetterIndexesBuilt).toBe(0);
+    expect(result.metrics.forwardChecks).toBe(0);
+    expect(result.metrics.entriesForcedUnplaced).toBe(0);
+    expect(result.metrics.forwardCheckPrunes).toBe(0);
     expect(result.paretoFront).toHaveLength(0);
     expect(result.truncated).toBe(false);
   });
@@ -38,6 +41,7 @@ describe('backtracking solver', () => {
     expect(result.metrics.candidateAnchorsEvaluated).toBeGreaterThan(0);
     expect(result.metrics.crossingIndexesBuilt).toBeGreaterThan(0);
     expect(result.metrics.entryLetterIndexesBuilt).toBe(4);
+    expect(result.metrics.forwardChecks).toBeGreaterThan(0);
   });
 
   it('keeps disconnected entries explicit instead of inventing filler', () => {
@@ -49,6 +53,39 @@ describe('backtracking solver', () => {
 
     expect(answers(result)).toContain('CHIEN');
     expect(result.unplaced.map(({ answer }) => answer)).toContain('XYZ');
+    expect(result.metrics.entriesForcedUnplaced).toBeGreaterThan(0);
+  });
+
+  it('preserves words whose immediate MRV domain is empty but can become reachable later', () => {
+    const result = solveBacktracking([
+      { answer: 'ABCDE' },
+      { answer: 'DEF' },
+      { answer: 'FGH' },
+    ]);
+
+    expect(answers(result)).toEqual(['ABCDE', 'DEF', 'FGH']);
+    expect(result.unplaced).toHaveLength(0);
+  });
+
+  it('reduces search by forcing lexically unreachable components out of the branch', () => {
+    const entries = [
+      { answer: 'ABCDE' },
+      { answer: 'DEF' },
+      { answer: 'FGH' },
+      { answer: 'XYZ' },
+      { answer: 'QYX' },
+    ];
+
+    const checked = solveBacktracking(entries, { forwardChecking: true, branchAndBound: false });
+    const unchecked = solveBacktracking(entries, { forwardChecking: false, branchAndBound: false });
+
+    expect(answers(checked)).toEqual(answers(unchecked));
+    expect(checked.unplaced.map(({ answer }) => answer).sort()).toEqual(
+      unchecked.unplaced.map(({ answer }) => answer).sort(),
+    );
+    expect(checked.metrics.entriesForcedUnplaced).toBeGreaterThan(0);
+    expect(unchecked.metrics.entriesForcedUnplaced).toBe(0);
+    expect(checked.metrics.nodesExplored).toBeLessThan(unchecked.metrics.nodesExplored);
   });
 
   it('is deterministic for the same input', () => {

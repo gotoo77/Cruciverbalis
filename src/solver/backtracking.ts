@@ -29,6 +29,9 @@ export interface SearchMetrics {
   readonly candidateAnchorsEvaluated: number;
   readonly crossingIndexesBuilt: number;
   readonly entryLetterIndexesBuilt: number;
+  readonly forwardChecks: number;
+  readonly entriesForcedUnplaced: number;
+  readonly forwardCheckPrunes: number;
   readonly branchesPruned: number;
   readonly paretoCandidates: number;
   readonly paretoAccepted: number;
@@ -38,6 +41,15 @@ export interface BacktrackingOptions {
   readonly maxNodes?: number;
   readonly entryOrdering?: EntryOrdering;
   readonly branchAndBound?: boolean;
+  /**
+   * Écarte tôt les mots qui n'ont plus aucun chemin lexical possible vers la
+   * grille courante, même via d'autres mots encore en attente.
+   *
+   * On ne coupe volontairement pas sur un domaine immédiat vide : un mot peut
+   * devenir plaçable après l'ajout d'un autre mot. Le test utilisé ici est une
+   * condition nécessaire de connectabilité future, donc sûre.
+   */
+  readonly forwardChecking?: boolean;
   /** Conserve toutes les solutions terminales non dominées. */
   readonly collectPareto?: boolean;
 }
@@ -62,6 +74,9 @@ interface MutableMetrics {
   candidateAnchorsEvaluated: number;
   crossingIndexesBuilt: number;
   entryLetterIndexesBuilt: number;
+  forwardChecks: number;
+  entriesForcedUnplaced: number;
+  forwardCheckPrunes: number;
   branchesPruned: number;
   paretoCandidates: number;
   paretoAccepted: number;
@@ -86,6 +101,11 @@ interface SelectedEntry {
   readonly entry: Entry;
   readonly rest: readonly Entry[];
   readonly candidates: readonly Candidate[];
+}
+
+interface ReachabilityPartition {
+  readonly reachable: readonly Entry[];
+  readonly unreachable: readonly Entry[];
 }
 
 interface SearchBest {
@@ -198,19 +218,50 @@ function candidatesFor(
   );
 }
 
+function partitionByFutureReachability(
+  pending: readonly Entry[],
+  crossingIndex: CrossingIndex,
+  entryIndexes: ReadonlyMap<Entry, EntryLetterIndex>,
+): ReachabilityPartition {
+  if (pending.length === 0) return { reachable: [], unreachable: [] };
+
+  const availableLetters = new Set(crossingIndex.keys());
+  const remaining = new Set(pending);
+  const reachable: Entry[] = [];
+
+  // Fermeture transitive du graphe lexical : dès qu'un mot partage une lettre
+  // avec la grille ou avec un mot déjà déclaré atteignable, il peut encore
+  // devenir plaçable plus tard. Les mots qui restent hors de cette fermeture
+  // ne pourront jamais rejoindre la grille dans cette branche.
+  let progressed = true;
+  while (progressed) {
+    progressed = false;
+    for (const entry of [...remaining]) {
+      const letterIndex = entryIndexes.get(entry) ?? buildEntryLetterIndex(entry);
+      if (![...letterIndex.keys()].some((letter) => availableLetters.has(letter))) continue;
+
+      reachable.push(entry);
+      remaining.delete(entry);
+      for (const letter of letterIndex.keys()) availableLetters.add(letter);
+      progressed = true;
+    }
+  }
+
+  return {
+    reachable,
+    unreachable: pending.filter((entry) => remaining.has(entry)),
+  };
+}
+
 function selectNextEntry(
   grid: DomainGrid,
   pending: readonly Entry[],
   ordering: EntryOrdering,
+  crossingIndex: CrossingIndex,
   entryIndexes: ReadonlyMap<Entry, EntryLetterIndex>,
   metrics: MutableMetrics,
 ): SelectedEntry | undefined {
   if (pending.length === 0) return undefined;
-
-  // Un même état de grille sert à évaluer tous les domaines MRV : l'index des
-  // ancres est donc construit une seule fois par sélection, et non une fois
-  // par mot candidat.
-  const crossingIndex = buildCrossingIndex(grid, metrics);
 
   if (ordering === 'fixed') {
     const [entry, ...rest] = pending;
@@ -225,6 +276,7 @@ function selectNextEntry(
 
   let selectedIndex = -1;
   let selectedCandidates: readonly Candidate[] = [];
+  let zeroDomainIndex = -1;
 
   for (let index = 0; index < pending.length; index += 1) {
     const entry = pending[index];
@@ -233,6 +285,19 @@ function selectNextEntry(
     const letterIndex = entryIndexes.get(entry) ?? buildEntryLetterIndex(entry);
     const candidates = candidatesFor(grid, entry, crossingIndex, letterIndex, metrics);
     metrics.candidateSetsEvaluated += 1;
+
+    // Dans ce solveur les domaines peuvent grandir : un mot sans placement
+    // immédiat peut devenir plaçable après l'ajout d'un autre mot. MRV doit
+    // donc choisir le plus petit domaine strictement positif s'il en existe.
+    if (candidates.length === 0) {
+      if (
+        zeroDomainIndex < 0 ||
+        entry.answer.localeCompare(pending[zeroDomainIndex]?.answer ?? '') < 0
+      ) {
+        zeroDomainIndex = index;
+      }
+      continue;
+    }
 
     if (
       selectedIndex < 0 ||
@@ -245,6 +310,10 @@ function selectNextEntry(
     }
   }
 
+  if (selectedIndex < 0) {
+    selectedIndex = zeroDomainIndex;
+    selectedCandidates = [];
+  }
   if (selectedIndex < 0) return undefined;
   const entry = pending[selectedIndex];
   if (!entry) return undefined;
@@ -291,6 +360,9 @@ export function solveBacktracking(entries: readonly Entry[], options: Backtracki
     candidateAnchorsEvaluated: 0,
     crossingIndexesBuilt: 0,
     entryLetterIndexesBuilt: 0,
+    forwardChecks: 0,
+    entriesForcedUnplaced: 0,
+    forwardCheckPrunes: 0,
     branchesPruned: 0,
     paretoCandidates: 0,
     paretoAccepted: 0,
@@ -299,6 +371,7 @@ export function solveBacktracking(entries: readonly Entry[], options: Backtracki
   const entryOrdering = options.entryOrdering ?? 'mrv';
   const collectPareto = options.collectPareto ?? false;
   const branchAndBound = (options.branchAndBound ?? true) && !collectPareto;
+  const forwardChecking = options.forwardChecking ?? true;
   let truncated = false;
   let paretoFront: readonly ParetoSolution[] = [];
 
@@ -338,6 +411,22 @@ export function solveBacktracking(entries: readonly Entry[], options: Backtracki
 
   const best: SearchBest = { grid: initial.grid, unplaced: [...remaining, ...invalid] };
 
+  function recordTerminal(grid: DomainGrid, skipped: readonly Entry[]): void {
+    metrics.solutionsFound += 1;
+    const unplaced = [...skipped, ...invalid];
+    if (isBetter(grid, unplaced, best)) {
+      best.grid = grid;
+      best.unplaced = unplaced;
+    }
+
+    if (collectPareto) {
+      metrics.paretoCandidates += 1;
+      const next = addToParetoFront(paretoFront, createParetoSolution(grid, unplaced));
+      if (next !== paretoFront) metrics.paretoAccepted += 1;
+      paretoFront = next;
+    }
+  }
+
   function explore(grid: DomainGrid, pending: readonly Entry[], skipped: readonly Entry[], depth: number): void {
     if (metrics.nodesExplored >= maxNodes) {
       truncated = true;
@@ -353,23 +442,43 @@ export function solveBacktracking(entries: readonly Entry[], options: Backtracki
     metrics.maxDepth = Math.max(metrics.maxDepth, depth);
 
     if (pending.length === 0) {
-      metrics.solutionsFound += 1;
-      const unplaced = [...skipped, ...invalid];
-      if (isBetter(grid, unplaced, best)) {
-        best.grid = grid;
-        best.unplaced = unplaced;
-      }
-
-      if (collectPareto) {
-        metrics.paretoCandidates += 1;
-        const next = addToParetoFront(paretoFront, createParetoSolution(grid, unplaced));
-        if (next !== paretoFront) metrics.paretoAccepted += 1;
-        paretoFront = next;
-      }
+      recordTerminal(grid, skipped);
       return;
     }
 
-    const selected = selectNextEntry(grid, pending, entryOrdering, entryIndexes, metrics);
+    const crossingIndex = buildCrossingIndex(grid, metrics);
+    let effectivePending = pending;
+    let effectiveSkipped = skipped;
+
+    if (forwardChecking) {
+      metrics.forwardChecks += 1;
+      const partition = partitionByFutureReachability(pending, crossingIndex, entryIndexes);
+      if (partition.unreachable.length > 0) {
+        metrics.entriesForcedUnplaced += partition.unreachable.length;
+        effectivePending = partition.reachable;
+        effectiveSkipped = [...skipped, ...partition.unreachable];
+
+        if (branchAndBound && cannotBeatBest(effectiveSkipped.length, invalid.length, best)) {
+          metrics.branchesPruned += 1;
+          metrics.forwardCheckPrunes += 1;
+          return;
+        }
+      }
+    }
+
+    if (effectivePending.length === 0) {
+      recordTerminal(grid, effectiveSkipped);
+      return;
+    }
+
+    const selected = selectNextEntry(
+      grid,
+      effectivePending,
+      entryOrdering,
+      crossingIndex,
+      entryIndexes,
+      metrics,
+    );
     if (!selected) return;
     const { entry, rest, candidates } = selected;
 
@@ -377,12 +486,12 @@ export function solveBacktracking(entries: readonly Entry[], options: Backtracki
 
     for (const candidate of candidates) {
       metrics.placementsTried += 1;
-      explore(candidate.grid, rest, skipped, depth + 1);
+      explore(candidate.grid, rest, effectiveSkipped, depth + 1);
       metrics.backtracks += 1;
       if (truncated) return;
     }
 
-    explore(grid, rest, [...skipped, entry], depth + 1);
+    explore(grid, rest, [...effectiveSkipped, entry], depth + 1);
     metrics.backtracks += 1;
   }
 
