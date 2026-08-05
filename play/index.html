@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Cruciverbalis — jouer une grille de mots croisés" />
+    <link rel="stylesheet" href="/src/app-shell.css" />
+    <link rel="stylesheet" href="/src/playable-crossword-player.css" />
+    <title>Cruciverbalis — Jouer</title>
+  </head>
+  <body>
+    <header class="app-header">
+      <a class="app-brand" href="/Cruciverbalis/" aria-label="Cruciverbalis, accueil">Cruciverbalis</a>
+      <nav class="app-nav" aria-label="Navigation principale">
+        <a href="/Cruciverbalis/">Construire</a>
+        <a class="active" href="/Cruciverbalis/play/" aria-current="page">Jouer</a>
+      </nav>
+    </header>
+    <main class="player-page">
+      <div class="player-shell">
+        <section class="player-intro">
+          <span class="eyebrow">Player</span>
+          <h1>Jouer une grille</h1>
+          <p class="search-note">Charge un artefact PlayableCrossword JSON. Cette page ne contient aucun outil de construction ni métrique d’atelier.</p>
+        </section>
+        <section class="player-loader" aria-labelledby="player-loader-title">
+          <div>
+            <h2 id="player-loader-title">Choisir une grille</h2>
+            <p class="search-note">Import local, glisser-déposer ou chargement d’une grille statique avec <code>?id=nom-de-la-grille</code>.</p>
+          </div>
+          <div class="player-loader-actions">
+            <button type="button" id="import-playable">Importer un JSON</button>
+          </div>
+          <input id="playable-file" type="file" accept="application/json,.json" hidden />
+          <div id="player-dropzone" class="player-dropzone" tabindex="0">Dépose le fichier JSON ici</div>
+          <p id="player-import-status" class="search-note" aria-live="polite">Aucune grille chargée.</p>
+        </section>
+        <section id="player-board" aria-live="polite"></section>
+      </div>
+    </main>
+    <script type="module" src="/src/player-page.ts"></script>
+  </body>
+</html>
