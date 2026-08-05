@@ -1,17 +1,17 @@
-.clue-set-playground { margin-top: 1rem; padding: 1.1rem; border: 1px solid var(--line); border-radius: .9rem; background: #faf8f2; }
+.clue-set-playground { margin-top: 1rem; padding: 1.1rem; border: 1px solid var(--border); border-radius: .9rem; background: var(--surface-raised); color: var(--text); }
 .clue-set-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
 .clue-set-toolbar { display: grid; grid-template-columns: 1.2fr 1fr auto; gap: .8rem; align-items: end; margin-top: .9rem; }
 .clue-set-toolbar label { display: grid; gap: .35rem; font-weight: 700; }
 .clue-set-toolbar label > span { font-size: .82rem; color: var(--muted); }
 .clue-set-actions { display: flex; flex-wrap: wrap; gap: .45rem; }
 .clue-set-results { display: grid; gap: .7rem; margin-top: .9rem; }
-.clue-answer-card { padding: .8rem; border: 1px solid var(--line); border-radius: .75rem; background: var(--paper); }
+.clue-answer-card { padding: .8rem; border: 1px solid var(--border); border-radius: .75rem; background: var(--surface); color: var(--text); }
 .clue-answer-card > header { display: flex; justify-content: space-between; gap: .7rem; align-items: baseline; margin-bottom: .6rem; }
 .clue-answer-card > header strong { font-size: 1.05rem; letter-spacing: .04em; }
 .clue-answer-card > header span { color: var(--muted); font-size: .78rem; }
 .clue-list { display: grid; gap: .5rem; }
-.clue-item { padding: .65rem; border-radius: .65rem; background: var(--soft); }
+.clue-item { padding: .65rem; border-radius: .65rem; background: var(--surface-soft); }
 .clue-item p { margin: .35rem 0 .2rem; line-height: 1.45; }
 .clue-item small { color: var(--muted); }
-.clue-kind { display: inline-block; padding: .2rem .42rem; border-radius: 999px; background: var(--ink); color: white; font-size: .68rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; }
+.clue-kind { display: inline-block; padding: .2rem .42rem; border-radius: 999px; background: var(--accent); color: var(--accent-ink); font-size: .68rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; }
 @media (max-width: 760px) { .clue-set-toolbar { grid-template-columns: 1fr; } .clue-set-actions { display: grid; grid-template-columns: 1fr 1fr; } .clue-set-actions button { width: 100%; } }
