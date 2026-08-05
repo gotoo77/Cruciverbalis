@@ -26,5 +26,5 @@ export { DEFAULT_LEXICAL_QUALITY_POLICY, normalizeLexicon, scoreLexicalCandidate
 export { analyzeWordSet, type WordSetAnalysis, type WordSetDifficulty } from '../artifacts/word-set-analysis';
 export { WORD_SET_PRESETS, findWordSetPreset } from '../artifacts/word-set-presets';
 export { CLUE_SET_PRESETS, findClueSetPreset } from '../artifacts/clue-set-presets';
-export type { Entry } from '../core/domain';
+export type { Entry, Placement } from '../core/domain';
 export type { GridQuality } from '../quality/grid-quality';
