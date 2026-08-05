@@ -20,11 +20,7 @@ function downloadClueSet(clueSet: ClueSet): void {
 function renderClues(container: HTMLElement, clueSet: ClueSet, kind: ClueKind | 'all'): void {
   const clues = kind === 'all' ? clueSet.clues : clueSet.clues.filter((clue) => clue.kind === kind);
   const grouped = new Map<string, typeof clues>();
-
-  for (const clue of clues) {
-    const existing = grouped.get(clue.answer) ?? [];
-    grouped.set(clue.answer, [...existing, clue]);
-  }
+  for (const clue of clues) grouped.set(clue.answer, [...(grouped.get(clue.answer) ?? []), clue]);
 
   if (grouped.size === 0) {
     container.innerHTML = '<p class="empty">Aucun indice ne correspond à ce filtre.</p>';
@@ -33,19 +29,10 @@ function renderClues(container: HTMLElement, clueSet: ClueSet, kind: ClueKind | 
 
   container.innerHTML = [...grouped.entries()].map(([answer, answerClues]) => `
     <article class="clue-answer-card">
-      <header>
-        <strong>${answer}</strong>
-        <span>${answerClues.length} indice${answerClues.length > 1 ? 's' : ''}</span>
-      </header>
-      <div class="clue-list">
-        ${answerClues.map((clue) => `
-          <div class="clue-item">
-            <span class="clue-kind">${clue.kind}</span>
-            <p>${clue.text}</p>
-            ${clue.difficulty ? `<small>Difficulté ${clue.difficulty}/5</small>` : ''}
-          </div>
-        `).join('')}
-      </div>
+      <header><strong>${answer}</strong><span>${answerClues.length} indice${answerClues.length > 1 ? 's' : ''}</span></header>
+      <div class="clue-list">${answerClues.map((clue) => `
+        <div class="clue-item"><span class="clue-kind">${clue.kind}</span><p>${clue.text}</p>${clue.difficulty ? `<small>Difficulté ${clue.difficulty}/5</small>` : ''}</div>
+      `).join('')}</div>
     </article>
   `).join('');
 }
@@ -54,40 +41,25 @@ function installClueSetPlayground(): void {
   const controls = document.querySelector<HTMLElement>('.controls');
   if (!controls || document.querySelector('#clue-set-playground')) return;
 
-  const section = document.createElement('section');
+  const section = document.createElement('details');
   section.id = 'clue-set-playground';
   section.className = 'clue-set-playground';
   section.innerHTML = `
-    <div class="clue-set-heading">
-      <div>
-        <p class="eyebrow">ClueSet</p>
-        <h2>Explorer les indices</h2>
-        <p class="search-note">Les indices restent séparés des mots et de la géométrie de la grille.</p>
+    <summary class="clue-set-summary">
+      <span><span class="eyebrow">ClueSet</span><strong>Explorer les indices</strong></span>
+      <span class="clue-set-summary-meta">${CLUE_SET_PRESETS.length} preset${CLUE_SET_PRESETS.length > 1 ? 's' : ''}</span>
+    </summary>
+    <div class="clue-set-content">
+      <p class="search-note">Les indices restent séparés des mots et de la géométrie de la grille.</p>
+      <div class="clue-set-toolbar">
+        <label><span>Jeu d’indices</span><select id="clue-set-preset"><option value="">Choisir un preset</option>${CLUE_SET_PRESETS.map((preset) => `<option value="${preset.id}">${preset.name}</option>`).join('')}</select></label>
+        <label><span>Type d’indice</span><select id="clue-kind-filter"><option value="all">Tous</option>${CLUE_KINDS.map((kind) => `<option value="${kind}">${kind}</option>`).join('')}</select></label>
+        <div class="clue-set-actions"><button type="button" class="secondary" id="import-clue-set">Importer JSON</button><button type="button" class="secondary" id="export-clue-set" disabled>Exporter JSON</button></div>
       </div>
+      <input id="clue-set-file" type="file" accept="application/json,.json" hidden />
+      <p id="clue-set-status" class="search-note" aria-live="polite">Charge un preset ou importe un artefact cruciverbalis.clue-set.v1.</p>
+      <div id="clue-set-results" class="clue-set-results"></div>
     </div>
-    <div class="clue-set-toolbar">
-      <label>
-        <span>Jeu d’indices</span>
-        <select id="clue-set-preset">
-          <option value="">Choisir un preset</option>
-          ${CLUE_SET_PRESETS.map((preset) => `<option value="${preset.id}">${preset.name}</option>`).join('')}
-        </select>
-      </label>
-      <label>
-        <span>Type d’indice</span>
-        <select id="clue-kind-filter">
-          <option value="all">Tous</option>
-          ${CLUE_KINDS.map((kind) => `<option value="${kind}">${kind}</option>`).join('')}
-        </select>
-      </label>
-      <div class="clue-set-actions">
-        <button type="button" class="secondary" id="import-clue-set">Importer JSON</button>
-        <button type="button" class="secondary" id="export-clue-set" disabled>Exporter JSON</button>
-      </div>
-    </div>
-    <input id="clue-set-file" type="file" accept="application/json,.json" hidden />
-    <p id="clue-set-status" class="search-note" aria-live="polite">Charge un preset ou importe un artefact cruciverbalis.clue-set.v1.</p>
-    <div id="clue-set-results" class="clue-set-results"></div>
   `;
 
   controls.after(section);
