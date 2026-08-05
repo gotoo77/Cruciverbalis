@@ -16,6 +16,9 @@ describe('backtracking solver', () => {
     expect(result.metrics.candidateAnchorsEvaluated).toBe(0);
     expect(result.metrics.crossingIndexesBuilt).toBe(0);
     expect(result.metrics.entryLetterIndexesBuilt).toBe(0);
+    expect(result.metrics.candidateCacheHits).toBe(0);
+    expect(result.metrics.candidateCacheMisses).toBe(0);
+    expect(result.metrics.candidateCacheEvictions).toBe(0);
     expect(result.metrics.forwardChecks).toBe(0);
     expect(result.metrics.entriesForcedUnplaced).toBe(0);
     expect(result.metrics.forwardCheckPrunes).toBe(0);
@@ -41,6 +44,7 @@ describe('backtracking solver', () => {
     expect(result.metrics.candidateAnchorsEvaluated).toBeGreaterThan(0);
     expect(result.metrics.crossingIndexesBuilt).toBeGreaterThan(0);
     expect(result.metrics.entryLetterIndexesBuilt).toBe(4);
+    expect(result.metrics.candidateCacheMisses).toBeGreaterThan(0);
     expect(result.metrics.forwardChecks).toBeGreaterThan(0);
   });
 
@@ -86,6 +90,58 @@ describe('backtracking solver', () => {
     expect(checked.metrics.entriesForcedUnplaced).toBeGreaterThan(0);
     expect(unchecked.metrics.entriesForcedUnplaced).toBe(0);
     expect(checked.metrics.nodesExplored).toBeLessThan(unchecked.metrics.nodesExplored);
+  });
+
+  it('réutilise les domaines déjà évalués sur une même grille', () => {
+    const entries = [
+      { answer: 'TACHE' },
+      { answer: 'CHAT' },
+      { answer: 'HACHE' },
+      { answer: 'THE' },
+      { answer: 'CACHE' },
+    ];
+
+    const cached = solveBacktracking(entries, {
+      candidateCache: true,
+      branchAndBound: false,
+      forwardChecking: false,
+    });
+    const uncached = solveBacktracking(entries, {
+      candidateCache: false,
+      branchAndBound: false,
+      forwardChecking: false,
+    });
+
+    expect(answers(cached)).toEqual(answers(uncached));
+    expect(cached.unplaced).toEqual(uncached.unplaced);
+    expect(cached.metrics.candidateCacheHits).toBeGreaterThan(0);
+    expect(cached.metrics.candidateCacheMisses).toBeGreaterThan(0);
+    expect(uncached.metrics.candidateCacheHits).toBe(0);
+    expect(uncached.metrics.candidateCacheMisses).toBe(0);
+    expect(cached.metrics.candidateAnchorsEvaluated).toBeLessThan(
+      uncached.metrics.candidateAnchorsEvaluated,
+    );
+  });
+
+  it('borne le cache et rend les évictions observables', () => {
+    const result = solveBacktracking(
+      [
+        { answer: 'TACHE' },
+        { answer: 'CHAT' },
+        { answer: 'HACHE' },
+        { answer: 'THE' },
+        { answer: 'CACHE' },
+      ],
+      {
+        candidateCache: true,
+        maxCandidateCacheEntries: 1,
+        branchAndBound: false,
+        forwardChecking: false,
+      },
+    );
+
+    expect(result.metrics.candidateCacheMisses).toBeGreaterThan(1);
+    expect(result.metrics.candidateCacheEvictions).toBeGreaterThan(0);
   });
 
   it('is deterministic for the same input', () => {
