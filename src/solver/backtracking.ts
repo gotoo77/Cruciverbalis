@@ -276,6 +276,7 @@ function selectNextEntry(
 
   let selectedIndex = -1;
   let selectedCandidates: readonly Candidate[] = [];
+  let zeroDomainIndex = -1;
 
   for (let index = 0; index < pending.length; index += 1) {
     const entry = pending[index];
@@ -284,6 +285,19 @@ function selectNextEntry(
     const letterIndex = entryIndexes.get(entry) ?? buildEntryLetterIndex(entry);
     const candidates = candidatesFor(grid, entry, crossingIndex, letterIndex, metrics);
     metrics.candidateSetsEvaluated += 1;
+
+    // Dans ce solveur les domaines peuvent grandir : un mot sans placement
+    // immédiat peut devenir plaçable après l'ajout d'un autre mot. MRV doit
+    // donc choisir le plus petit domaine strictement positif s'il en existe.
+    if (candidates.length === 0) {
+      if (
+        zeroDomainIndex < 0 ||
+        entry.answer.localeCompare(pending[zeroDomainIndex]?.answer ?? '') < 0
+      ) {
+        zeroDomainIndex = index;
+      }
+      continue;
+    }
 
     if (
       selectedIndex < 0 ||
@@ -296,6 +310,10 @@ function selectNextEntry(
     }
   }
 
+  if (selectedIndex < 0) {
+    selectedIndex = zeroDomainIndex;
+    selectedCandidates = [];
+  }
   if (selectedIndex < 0) return undefined;
   const entry = pending[selectedIndex];
   if (!entry) return undefined;
