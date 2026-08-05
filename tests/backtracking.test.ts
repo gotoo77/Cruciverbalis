@@ -14,6 +14,8 @@ describe('backtracking solver', () => {
     expect(result.metrics.nodesExplored).toBe(0);
     expect(result.metrics.branchesPruned).toBe(0);
     expect(result.metrics.candidateAnchorsEvaluated).toBe(0);
+    expect(result.metrics.crossingIndexesBuilt).toBe(0);
+    expect(result.metrics.entryLetterIndexesBuilt).toBe(0);
     expect(result.paretoFront).toHaveLength(0);
     expect(result.truncated).toBe(false);
   });
@@ -34,6 +36,8 @@ describe('backtracking solver', () => {
     expect(result.metrics.mrvSelections).toBeGreaterThan(0);
     expect(result.metrics.candidateSetsEvaluated).toBeGreaterThan(0);
     expect(result.metrics.candidateAnchorsEvaluated).toBeGreaterThan(0);
+    expect(result.metrics.crossingIndexesBuilt).toBeGreaterThan(0);
+    expect(result.metrics.entryLetterIndexesBuilt).toBe(4);
   });
 
   it('keeps disconnected entries explicit instead of inventing filler', () => {
@@ -78,6 +82,20 @@ describe('backtracking solver', () => {
     expect(fixed.metrics.mrvSelections).toBe(0);
     expect(mrv.metrics.mrvSelections).toBeGreaterThan(0);
     expect(answers(mrv)).toEqual(answers(solveBacktracking(entries)));
+  });
+
+  it('réutilise un seul index de grille pour tous les domaines MRV d un nœud', () => {
+    const result = solveBacktracking([
+      { answer: 'TACHE' },
+      { answer: 'CHAT' },
+      { answer: 'HACHE' },
+      { answer: 'THE' },
+      { answer: 'CACHE' },
+    ]);
+
+    expect(result.metrics.candidateSetsEvaluated).toBeGreaterThan(result.metrics.crossingIndexesBuilt);
+    expect(result.metrics.entryLetterIndexesBuilt).toBe(5);
+    expect(result.metrics.crossingIndexesBuilt).toBeLessThanOrEqual(result.metrics.nodesExplored);
   });
 
   it('makes MRV candidate comparison cost observable', () => {
