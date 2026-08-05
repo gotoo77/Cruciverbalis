@@ -1,8 +1,10 @@
 import {
   WORD_SET_PRESETS,
   WORD_SET_SCHEMA,
+  analyzeWordSet,
   parseWordSetJson,
   serializeWordSet,
+  type SearchComplexity,
   type WordSet,
   type WordSetEntry,
 } from './api';
@@ -46,6 +48,46 @@ function renderIssues(issues: readonly { path: string; message: string }[]): str
   return issues.map(({ path, message }) => `${path} : ${message}`).join(' · ');
 }
 
+const complexityLabels: Record<SearchComplexity, string> = {
+  low: 'Faible',
+  moderate: 'Modérée',
+  high: 'Élevée',
+  experimental: 'Expérimentale',
+};
+
+function renderDiagnostic(textarea: HTMLTextAreaElement, container: HTMLElement): void {
+  const analysis = analyzeWordSet(textareaToWordSet(textarea));
+  const percentage = Math.round(analysis.connectivityRatio * 100);
+  const tone = analysis.estimatedComplexity === 'low'
+    ? 'success'
+    : analysis.estimatedComplexity === 'moderate'
+      ? 'moderate'
+      : 'warning';
+
+  container.dataset.tone = tone;
+  container.innerHTML = `
+    <div class="word-set-diagnostic-heading">
+      <div>
+        <span class="eyebrow">Prédiagnostic de recherche</span>
+        <strong>${complexityLabels[analysis.estimatedComplexity]}</strong>
+      </div>
+      <span class="word-set-complexity">${analysis.entryCount} mot${analysis.entryCount > 1 ? 's' : ''}</span>
+    </div>
+    <div class="word-set-diagnostic-grid">
+      <span><small>Connectivité</small><strong>${percentage}%</strong></span>
+      <span><small>Composante principale</small><strong>${analysis.largestComponentSize}/${analysis.entryCount}</strong></span>
+      <span><small>Mots isolés</small><strong>${analysis.isolatedEntries.length}</strong></span>
+      <span><small>Budget conseillé</small><strong>${analysis.recommendedMaxNodes.toLocaleString('fr-FR')} nœuds</strong></span>
+    </div>
+    ${analysis.warnings.length > 0
+      ? `<ul class="word-set-warnings">${analysis.warnings.map((warning) => `<li>${warning}</li>`).join('')}</ul>`
+      : '<p class="word-set-diagnostic-note">Corpus dans la zone interactive recommandée et lexicalement connexe.</p>'}
+    ${analysis.isolatedEntries.length > 0
+      ? `<p class="word-set-diagnostic-note"><strong>Isolés :</strong> ${analysis.isolatedEntries.join(', ')}</p>`
+      : ''}
+  `;
+}
+
 function installWordSetPlayground(): void {
   const textarea = document.querySelector<HTMLTextAreaElement>('#entries');
   if (!textarea || document.querySelector('#word-set-tools')) return;
@@ -69,6 +111,7 @@ function installWordSetPlayground(): void {
     </div>
     <input id="word-set-file" type="file" accept="application/json,.json" hidden />
     <p id="word-set-status" class="search-note" aria-live="polite">La liste reste entièrement éditable après chargement d’un preset.</p>
+    <aside id="word-set-diagnostic" class="word-set-diagnostic" aria-live="polite"></aside>
   `;
 
   textarea.before(tools);
@@ -78,13 +121,17 @@ function installWordSetPlayground(): void {
   const exportButton = tools.querySelector<HTMLButtonElement>('#export-word-set');
   const fileInput = tools.querySelector<HTMLInputElement>('#word-set-file');
   const status = tools.querySelector<HTMLElement>('#word-set-status');
-  if (!presetSelect || !importButton || !exportButton || !fileInput || !status) return;
+  const diagnostic = tools.querySelector<HTMLElement>('#word-set-diagnostic');
+  if (!presetSelect || !importButton || !exportButton || !fileInput || !status || !diagnostic) return;
+
+  const refreshDiagnostic = (): void => renderDiagnostic(textarea, diagnostic);
 
   presetSelect.addEventListener('change', () => {
     const preset = WORD_SET_PRESETS.find(({ id }) => id === presetSelect.value);
     if (!preset) return;
     textarea.value = wordSetToTextarea(preset);
     status.textContent = `${preset.name} chargé : ${preset.entries.length} mots. Tu peux maintenant modifier librement la liste.`;
+    refreshDiagnostic();
   });
 
   importButton.addEventListener('click', () => fileInput.click());
@@ -102,6 +149,7 @@ function installWordSetPlayground(): void {
     presetSelect.value = WORD_SET_PRESETS.some(({ id }) => id === parsed.value.id) ? parsed.value.id : '';
     status.textContent = `${parsed.value.name} importé : ${parsed.value.entries.length} mots valides.`;
     fileInput.value = '';
+    refreshDiagnostic();
   });
 
   exportButton.addEventListener('click', () => {
@@ -116,7 +164,10 @@ function installWordSetPlayground(): void {
 
   textarea.addEventListener('input', () => {
     presetSelect.value = '';
+    refreshDiagnostic();
   });
+
+  refreshDiagnostic();
 }
 
 const observer = new MutationObserver(() => installWordSetPlayground());
