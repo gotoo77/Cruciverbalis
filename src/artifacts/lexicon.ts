@@ -32,12 +32,7 @@ export type LexiconValidationResult =
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-function requiredString(
-  record: Record<string, unknown>,
-  key: string,
-  path: string,
-  issues: LexiconValidationIssue[],
-): string | undefined {
+function requiredString(record: Record<string, unknown>, key: string, path: string, issues: LexiconValidationIssue[]): string | undefined {
   const value = record[key];
   if (typeof value !== 'string' || !value.trim()) {
     issues.push({ path: `${path}.${key}`, message: 'doit être une chaîne non vide' });
@@ -46,12 +41,7 @@ function requiredString(
   return value.trim();
 }
 
-function optionalString(
-  record: Record<string, unknown>,
-  key: string,
-  path: string,
-  issues: LexiconValidationIssue[],
-): string | undefined {
+function optionalString(record: Record<string, unknown>, key: string, path: string, issues: LexiconValidationIssue[]): string | undefined {
   const value = record[key];
   if (value === undefined) return undefined;
   if (typeof value !== 'string' || !value.trim()) {
@@ -84,34 +74,39 @@ export function validateLexicon(value: unknown): LexiconValidationResult {
         issues.push({ path, message: 'doit être un objet' });
         return;
       }
+
+      // Chaque champ est validé indépendamment afin de retourner en une passe
+      // l'ensemble des problèmes d'une entrée, plutôt que de masquer les suivants.
       const rawWord = requiredString(raw, 'word', path, issues);
-      if (!rawWord) return;
-      const word = normalizeAnswer(rawWord);
-      if (!word) {
-        issues.push({ path: `${path}.word`, message: 'ne contient aucune lettre exploitable' });
-        return;
-      }
-      if (seen.has(word)) {
-        issues.push({ path: `${path}.word`, message: 'duplique une autre entrée après normalisation' });
-        return;
-      }
-      seen.add(word);
+      const word = rawWord ? normalizeAnswer(rawWord) : undefined;
+      if (rawWord && !word) issues.push({ path: `${path}.word`, message: 'ne contient aucune lettre exploitable' });
+      if (word && seen.has(word)) issues.push({ path: `${path}.word`, message: 'duplique une autre entrée après normalisation' });
+      else if (word) seen.add(word);
 
       let frequency: number | undefined;
       if (raw.frequency !== undefined) {
         if (typeof raw.frequency !== 'number' || !Number.isFinite(raw.frequency) || raw.frequency < 0 || raw.frequency > 1) {
           issues.push({ path: `${path}.frequency`, message: 'doit être un nombre entre 0 et 1' });
-        } else frequency = raw.frequency;
+        } else {
+          frequency = raw.frequency;
+        }
       }
-      if (raw.abbreviation !== undefined && typeof raw.abbreviation !== 'boolean') issues.push({ path: `${path}.abbreviation`, message: 'doit être un booléen' });
-      if (raw.rare !== undefined && typeof raw.rare !== 'boolean') issues.push({ path: `${path}.rare`, message: 'doit être un booléen' });
 
-      entries.push({
-        word,
-        frequency,
-        abbreviation: typeof raw.abbreviation === 'boolean' ? raw.abbreviation : undefined,
-        rare: typeof raw.rare === 'boolean' ? raw.rare : undefined,
-      });
+      if (raw.abbreviation !== undefined && typeof raw.abbreviation !== 'boolean') {
+        issues.push({ path: `${path}.abbreviation`, message: 'doit être un booléen' });
+      }
+      if (raw.rare !== undefined && typeof raw.rare !== 'boolean') {
+        issues.push({ path: `${path}.rare`, message: 'doit être un booléen' });
+      }
+
+      if (word) {
+        entries.push({
+          word,
+          frequency,
+          abbreviation: typeof raw.abbreviation === 'boolean' ? raw.abbreviation : undefined,
+          rare: typeof raw.rare === 'boolean' ? raw.rare : undefined,
+        });
+      }
     });
   }
 
@@ -120,8 +115,11 @@ export function validateLexicon(value: unknown): LexiconValidationResult {
 }
 
 export function parseLexiconJson(json: string): LexiconValidationResult {
-  try { return validateLexicon(JSON.parse(json)); }
-  catch (error) { return { ok: false, issues: [{ path: '$', message: error instanceof Error ? error.message : 'JSON invalide' }] }; }
+  try {
+    return validateLexicon(JSON.parse(json));
+  } catch (error) {
+    return { ok: false, issues: [{ path: '$', message: error instanceof Error ? error.message : 'JSON invalide' }] };
+  }
 }
 
 export function serializeLexicon(lexicon: Lexicon): string {
