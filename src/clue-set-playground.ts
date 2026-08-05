@@ -3,6 +3,10 @@ import { CLUE_SET_PRESETS } from './artifacts/clue-set-presets';
 
 let currentClueSet: ClueSet | undefined;
 
+export function getCurrentClueSet(): ClueSet | undefined {
+  return currentClueSet;
+}
+
 function renderIssues(issues: readonly { path: string; message: string }[]): string {
   return issues.map(({ path, message }) => `${path} : ${message}`).join(' · ');
 }
