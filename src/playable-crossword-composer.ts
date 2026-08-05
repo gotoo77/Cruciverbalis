@@ -87,19 +87,19 @@ function installPlayableComposer(): void {
   section.className = 'playable-crossword-composer';
   section.innerHTML = `
     <summary class="playable-composer-summary">
-      <span><span class="eyebrow">Publication</span><strong>Composer une grille jouable</strong></span>
+      <span><span class="eyebrow">Publication</span><strong>Composer et exporter une grille jouable</strong></span>
       <span class="playable-schema">PlayableCrossword v1</span>
     </summary>
     <div class="playable-composer-content">
-      <p class="search-note">Assemble la solution actuellement affichée avec le ClueSet chargé. Quand plusieurs indices existent pour une réponse, le choix reste explicitement humain.</p>
+      <p class="search-note">Assemble la solution actuellement affichée avec le ClueSet chargé, puis exporte un fichier JSON directement réimportable dans « Jouer une grille ».</p>
       <div class="playable-meta">
         <label><span>Identifiant</span><input id="playable-id" value="crossword-demo-v1" /></label>
         <label><span>Nom</span><input id="playable-name" value="Grille Cruciverbalis" /></label>
       </div>
-      <div class="playable-actions">
-        <button type="button" id="prepare-playable">Préparer les indices</button>
-        <button type="button" class="secondary" id="compose-playable" disabled>Composer</button>
-        <button type="button" class="secondary" id="export-playable" disabled>Exporter JSON</button>
+      <div class="playable-actions" aria-label="Étapes de publication">
+        <button type="button" id="prepare-playable">1. Préparer les indices</button>
+        <button type="button" class="secondary" id="compose-playable" disabled>2. Composer la grille jouable</button>
+        <button type="button" class="secondary" id="export-playable" disabled>3. Exporter en JSON</button>
       </div>
       <p id="playable-status" class="search-note" aria-live="polite">Charge un ClueSet puis prépare la solution courante.</p>
       <div id="playable-clue-choices" class="playable-clue-choices"></div>
@@ -117,6 +117,12 @@ function installPlayableComposer(): void {
   const idInput = section.querySelector<HTMLInputElement>('#playable-id');
   const nameInput = section.querySelector<HTMLInputElement>('#playable-name');
   if (!prepare || !compose || !exportButton || !status || !choices || !preview || !idInput || !nameInput) return;
+
+  const exportCurrentCrossword = (): void => {
+    if (!composedCrossword) return;
+    downloadCrossword(composedCrossword);
+    status.textContent = `${composedCrossword.name} exporté en JSON. Ce fichier peut être importé directement dans « Jouer une grille ».`;
+  };
 
   prepare.addEventListener('click', () => {
     composedCrossword = undefined;
@@ -159,16 +165,22 @@ function installPlayableComposer(): void {
 
     composedCrossword = result.value;
     exportButton.disabled = false;
-    status.textContent = `${result.value.name} composé : ${result.value.entries.length} entrées, ${result.value.entries.length} choix d’indice figés.`;
+    status.textContent = `${result.value.name} est prête : ${result.value.entries.length} entrées et leurs indices sont figés.`;
     preview.hidden = false;
-    preview.innerHTML = `<strong>Artefact prêt à publier</strong><span>${result.value.schema}</span><span>ClueSet : ${result.value.clueSetId}</span><span>${result.value.entries.length} entrées jouables</span>`;
+    preview.innerHTML = `
+      <div class="playable-preview-copy">
+        <strong>Grille jouable prête à exporter</strong>
+        <span>${result.value.schema}</span>
+        <span>ClueSet : ${result.value.clueSetId}</span>
+        <span>${result.value.entries.length} entrées jouables</span>
+        <p>Le JSON produit est le format attendu par la section « Jouer une grille ».</p>
+      </div>
+      <button type="button" class="playable-export-cta" id="export-playable-ready">Exporter cette grille en JSON</button>
+    `;
+    preview.querySelector<HTMLButtonElement>('#export-playable-ready')?.addEventListener('click', exportCurrentCrossword);
   });
 
-  exportButton.addEventListener('click', () => {
-    if (!composedCrossword) return;
-    downloadCrossword(composedCrossword);
-    status.textContent = `${composedCrossword.name} exporté en JSON reproductible.`;
-  });
+  exportButton.addEventListener('click', exportCurrentCrossword);
 }
 
 const observer = new MutationObserver(() => installPlayableComposer());
