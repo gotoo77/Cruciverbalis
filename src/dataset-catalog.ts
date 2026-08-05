@@ -52,39 +52,44 @@ function installDatasetCatalog(): void {
   const textarea = document.querySelector<HTMLTextAreaElement>('#entries');
   if (!textarea || document.querySelector('#dataset-catalog')) return;
 
-  const catalog = document.createElement('section');
+  const catalog = document.createElement('details');
   catalog.id = 'dataset-catalog';
   catalog.className = 'dataset-catalog';
   catalog.innerHTML = `
-    <div class="dataset-catalog-heading">
-      <div>
-        <p class="eyebrow">Matériaux reproductibles</p>
-        <h3>Catalogue de WordSets</h3>
+    <summary class="dataset-catalog-summary">
+      <span><strong>WordSets disponibles</strong><small>${WORD_SET_PRESETS.length} preset${WORD_SET_PRESETS.length > 1 ? 's' : ''} reproductible${WORD_SET_PRESETS.length > 1 ? 's' : ''}</small></span>
+    </summary>
+    <div class="dataset-catalog-content">
+      <div class="dataset-catalog-heading">
+        <div>
+          <p class="eyebrow">Matériaux reproductibles</p>
+          <h3>Catalogue de WordSets</h3>
+        </div>
+        <button type="button" class="secondary" id="analyze-current-word-set">Analyser la liste courante</button>
       </div>
-      <button type="button" class="secondary" id="analyze-current-word-set">Analyser la liste courante</button>
+      <div class="dataset-cards">
+        ${WORD_SET_PRESETS.map((preset) => {
+          const analysis = analyzeWordSet(preset);
+          return `
+            <article class="dataset-card" data-dataset-card="${preset.id}" tabindex="0" role="button" aria-label="Charger le WordSet ${preset.name}">
+              <div>
+                <span class="dataset-language">${preset.language.toLocaleUpperCase()}</span>
+                <h4>${preset.name}</h4>
+                <p>${preset.description ?? ''}</p>
+              </div>
+              <dl>
+                <div><dt>Mots</dt><dd>${analysis.entryCount}</dd></div>
+                <div><dt>Moyenne</dt><dd>${analysis.averageLength.toFixed(1)}</dd></div>
+                <div><dt>Difficulté</dt><dd>${difficultyLabel[analysis.difficulty]}</dd></div>
+              </dl>
+              <p class="dataset-meta">${preset.author ?? 'Auteur inconnu'} · ${preset.license ?? 'Licence non précisée'}</p>
+              <span class="dataset-load-hint" aria-hidden="true">Charger ce WordSet →</span>
+            </article>
+          `;
+        }).join('')}
+      </div>
+      <div id="dataset-analysis" class="dataset-analysis" hidden></div>
     </div>
-    <div class="dataset-cards">
-      ${WORD_SET_PRESETS.map((preset) => {
-        const analysis = analyzeWordSet(preset);
-        return `
-          <article class="dataset-card">
-            <div>
-              <span class="dataset-language">${preset.language.toLocaleUpperCase()}</span>
-              <h4>${preset.name}</h4>
-              <p>${preset.description ?? ''}</p>
-            </div>
-            <dl>
-              <div><dt>Mots</dt><dd>${analysis.entryCount}</dd></div>
-              <div><dt>Moyenne</dt><dd>${analysis.averageLength.toFixed(1)}</dd></div>
-              <div><dt>Difficulté</dt><dd>${difficultyLabel[analysis.difficulty]}</dd></div>
-            </dl>
-            <p class="dataset-meta">${preset.author ?? 'Auteur inconnu'} · ${preset.license ?? 'Licence non précisée'}</p>
-            <button type="button" class="secondary" data-load-dataset="${preset.id}">Charger</button>
-          </article>
-        `;
-      }).join('')}
-    </div>
-    <div id="dataset-analysis" class="dataset-analysis" hidden></div>
   `;
 
   const tools = document.querySelector('#word-set-tools');
@@ -95,15 +100,28 @@ function installDatasetCatalog(): void {
   const analyzeButton = catalog.querySelector<HTMLButtonElement>('#analyze-current-word-set');
   if (!analysisPanel || !analyzeButton) return;
 
-  catalog.querySelectorAll<HTMLButtonElement>('[data-load-dataset]').forEach((button) => {
-    button.addEventListener('click', () => {
-      const preset = WORD_SET_PRESETS.find(({ id }) => id === button.dataset.loadDataset);
-      if (!preset) return;
-      textarea.value = preset.entries.map(({ answer }) => answer).join('\n');
-      textarea.dispatchEvent(new Event('input', { bubbles: true }));
-      analysisPanel.hidden = false;
-      analysisPanel.innerHTML = `<h4>${preset.name}</h4>${renderAnalysis(preset)}`;
-      textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  const loadPreset = (id: string): void => {
+    const preset = WORD_SET_PRESETS.find(({ id: presetId }) => presetId === id);
+    if (!preset) return;
+    textarea.value = preset.entries.map(({ answer }) => answer).join('\n');
+    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    analysisPanel.hidden = false;
+    analysisPanel.innerHTML = `<p class="success"><strong>${preset.name}</strong> chargé.</p><h4>${preset.name}</h4>${renderAnalysis(preset)}`;
+    if (window.matchMedia('(max-width: 900px)').matches) catalog.open = false;
+    textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+
+  catalog.querySelectorAll<HTMLElement>('[data-dataset-card]').forEach((card) => {
+    const load = (): void => {
+      const id = card.dataset.datasetCard;
+      if (id) loadPreset(id);
+    };
+    card.addEventListener('click', load);
+    card.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        load();
+      }
     });
   });
 
