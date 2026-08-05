@@ -138,6 +138,16 @@ export {
 } from '../artifacts/solve-feedback';
 
 export {
+  candidatesForSlot,
+  detectFillSlots,
+  fillSeedGrid,
+  type FillPassOptions,
+  type FillPassResult,
+  type FillPassStats,
+  type FillSlot,
+} from '../fill/fill-pass';
+
+export {
   analyzeWordSet,
   type WordSetAnalysis,
   type WordSetDifficulty,
