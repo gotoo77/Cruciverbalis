@@ -104,6 +104,7 @@ function installGenerationAdvisor(): void {
   // Le listener principal lit les valeurs pendant la phase bubble. En capture,
   // on matérialise donc la recommandation, puis on restaure l'affichage « auto ».
   generate.addEventListener('click', () => {
+    recommendation = recommendGeneration(analyzeWordSet(textareaToWordSet(textarea)));
     const restoreStrategy = strategy.value === 'auto';
     const restoreBudget = maxNodes.value === 'auto';
     if (restoreStrategy) strategy.value = recommendation.strategy;
@@ -111,6 +112,7 @@ function installGenerationAdvisor(): void {
     queueMicrotask(() => {
       if (restoreStrategy) strategy.value = 'auto';
       if (restoreBudget) maxNodes.value = 'auto';
+      refresh();
     });
   }, { capture: true });
 
