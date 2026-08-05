@@ -25,6 +25,8 @@ describe('WordSet analysis', () => {
 
     expect(analysis.isolatedEntries).toEqual(['LOUP']);
     expect(analysis.averageSharedLetters).toBeCloseTo(2 / 3);
+    expect(analysis.connectedComponents).toEqual([['CHAT', 'TACHE'], ['LOUP']]);
+    expect(analysis.connectivityRatio).toBeCloseTo(2 / 3);
   });
 
   it('marks rare-letter-heavy disconnected sets as hard', () => {
@@ -32,5 +34,24 @@ describe('WordSet analysis', () => {
 
     expect(analysis.rareLetters).toEqual(['J', 'K', 'W', 'X', 'Y', 'Z']);
     expect(analysis.difficulty).toBe('hard');
+  });
+
+  it('recommande un budget borné pour une liste thématique riche', () => {
+    const answers = Array.from({ length: 22 }, (_, index) => `MOTCOMMUN${String.fromCharCode(65 + index)}`);
+    const analysis = analyzeWordSet(wordSet(answers));
+
+    expect(analysis.estimatedComplexity).toBe('high');
+    expect(analysis.recommendedMaxNodes).toBe(500_000);
+    expect(analysis.recommendedMaximumEntries).toBe(20);
+    expect(analysis.warnings).toContain('Plus de 20 mots thématiques : la recherche interactive peut devenir coûteuse.');
+  });
+
+  it('classe plus de trente mots comme expérimental', () => {
+    const answers = Array.from({ length: 31 }, (_, index) => `THEME${index}A`);
+    const analysis = analyzeWordSet(wordSet(answers));
+
+    expect(analysis.estimatedComplexity).toBe('experimental');
+    expect(analysis.recommendedMaxNodes).toBe(1_000_000);
+    expect(analysis.warnings).toContain('Plus de 30 mots thématiques : utiliser une stratégie approximative ou fractionner le corpus.');
   });
 });
