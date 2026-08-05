@@ -13,6 +13,7 @@ describe('backtracking solver', () => {
     expect(result.unplaced).toHaveLength(0);
     expect(result.metrics.nodesExplored).toBe(0);
     expect(result.metrics.branchesPruned).toBe(0);
+    expect(result.metrics.candidateAnchorsEvaluated).toBe(0);
     expect(result.paretoFront).toHaveLength(0);
     expect(result.truncated).toBe(false);
   });
@@ -32,6 +33,7 @@ describe('backtracking solver', () => {
     expect(result.metrics.solutionsFound).toBeGreaterThan(0);
     expect(result.metrics.mrvSelections).toBeGreaterThan(0);
     expect(result.metrics.candidateSetsEvaluated).toBeGreaterThan(0);
+    expect(result.metrics.candidateAnchorsEvaluated).toBeGreaterThan(0);
   });
 
   it('keeps disconnected entries explicit instead of inventing filler', () => {
@@ -91,6 +93,7 @@ describe('backtracking solver', () => {
 
     expect(fixed.metrics.mrvSelections).toBe(0);
     expect(mrv.metrics.candidateSetsEvaluated).toBeGreaterThan(mrv.metrics.mrvSelections);
+    expect(mrv.metrics.candidateAnchorsEvaluated).toBeGreaterThan(0);
   });
 
   it('prunes branches that cannot beat the incumbent', () => {
