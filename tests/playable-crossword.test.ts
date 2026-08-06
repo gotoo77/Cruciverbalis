@@ -94,7 +94,7 @@ describe('PlayableCrossword v1', () => {
   it('allows FillPass words outside the thematic WordSet when they have a clue', () => {
     const grid = gridWith(
       { answer: 'MELON', row: 0, col: 0, direction: 'across' },
-      { answer: 'ETE', row: -1, col: 1, direction: 'down' },
+      { answer: 'ETE', row: 0, col: 1, direction: 'down' },
     );
     const result = composePlayableCrosswordFromArtifacts(grid, words, clues, {
       id: 'with-fill',
