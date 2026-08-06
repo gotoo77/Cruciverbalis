@@ -9,6 +9,11 @@ export interface ArtifactProvenance {
   readonly parentArtifacts?: readonly string[];
 }
 
+/**
+ * Une entrée de WordSet décrit uniquement le matériau lexical de génération.
+ * Les contenus destinés au joueur (définition, indice, jeu de mots, etc.)
+ * appartiennent aux ClueSet et ne doivent pas être dupliqués ici.
+ */
 export interface WordSetEntry {
   readonly answer: string;
   readonly theme?: string;
@@ -62,6 +67,8 @@ const optionalString = (
   return value;
 };
 
+const WORD_SET_ENTRY_KEYS = new Set(['answer', 'theme', 'difficulty']);
+
 export function validateWordSet(value: unknown): WordSetValidationResult {
   const issues: WordSetValidationIssue[] = [];
   if (!isRecord(value)) {
@@ -90,6 +97,18 @@ export function validateWordSet(value: unknown): WordSetValidationResult {
       if (!isRecord(candidate)) {
         issues.push({ path, message: 'must be an object' });
         return;
+      }
+
+      // Le schéma v1 est volontairement fermé au niveau des entrées : cela
+      // empêche qu'une définition ou un indice joueur se glisse à nouveau dans
+      // WordSet et recrée une seconde source éditoriale à côté de ClueSet.
+      for (const key of Object.keys(candidate)) {
+        if (!WORD_SET_ENTRY_KEYS.has(key)) {
+          issues.push({
+            path: `${path}.${key}`,
+            message: 'is not allowed in WordSet entries; player-facing content belongs in ClueSet',
+          });
+        }
       }
 
       const answer = optionalString(candidate, 'answer', path, issues);

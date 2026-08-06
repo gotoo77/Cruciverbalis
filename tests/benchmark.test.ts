@@ -4,7 +4,11 @@ import { runBenchmarkSuite } from '../src/benchmark/suite';
 
 describe('benchmark suite', () => {
   it('runs every reference fixture against every default strategy', () => {
-    const rows = runBenchmarkSuite();
+    // Ce test vérifie la couverture fonctionnelle de la matrice de benchmark,
+    // pas la capacité à épuiser le budget maximal du solveur. Un budget borné
+    // garde le smoke test stable sur les runners CI plus lents tout en exécutant
+    // bien chaque fixture contre chaque stratégie.
+    const rows = runBenchmarkSuite({ maxNodes: 20_000 });
 
     expect(rows).toHaveLength(benchmarkFixtures.length * 4);
     expect(new Set(rows.map(({ fixtureId }) => fixtureId)).size).toBe(benchmarkFixtures.length);
