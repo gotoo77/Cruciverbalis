@@ -1,12 +1,15 @@
 import {
+  classifyPlayableEntries,
   cluesForAnswer,
-  composePlayableCrossword,
+  composePlayableCrosswordFromArtifacts,
   generate,
   serializePlayableCrossword,
+  WORD_SET_SCHEMA,
   type ClueSelection,
   type GeneratedGrid,
   type GenerationStrategy,
   type PlayableCrossword,
+  type WordSet,
 } from './api';
 import { getCurrentClueSet } from './clue-set-playground';
 
@@ -17,6 +20,25 @@ function selectedSolutionIndex(): number {
   const label = document.querySelector<HTMLElement>('.solution-nav strong')?.textContent ?? '';
   const match = /Solution\s+(\d+)\s*\//i.exec(label);
   return match ? Math.max(0, Number(match[1]) - 1) : 0;
+}
+
+function currentWordSet(): WordSet | undefined {
+  const textarea = document.querySelector<HTMLTextAreaElement>('#entries');
+  if (!textarea) return undefined;
+  const entries = textarea.value
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => ({ answer: (line.split('|')[0] ?? '').trim() }))
+    .filter(({ answer }) => answer.length > 0);
+  if (entries.length === 0) return undefined;
+  return {
+    schema: WORD_SET_SCHEMA,
+    id: 'browser-draft',
+    name: 'WordSet courant',
+    language: 'fr',
+    entries,
+  };
 }
 
 function currentGeneratedSolution(): GeneratedGrid | undefined {
@@ -91,7 +113,7 @@ function installPlayableComposer(): void {
       <span class="playable-schema">PlayableCrossword v1</span>
     </summary>
     <div class="playable-composer-content">
-      <p class="search-note">Assemble la solution actuellement affichée avec le ClueSet chargé, puis exporte un fichier JSON directement réimportable dans « Jouer une grille ».</p>
+      <p class="search-note">Assemble la solution actuellement affichée avec le WordSet courant et le ClueSet chargé, puis exporte un fichier JSON directement réimportable dans « Jouer une grille ».</p>
       <div class="playable-meta">
         <label><span>Identifiant</span><input id="playable-id" value="crossword-demo-v1" /></label>
         <label><span>Nom</span><input id="playable-name" value="Grille Cruciverbalis" /></label>
@@ -145,12 +167,13 @@ function installPlayableComposer(): void {
 
   compose.addEventListener('click', () => {
     const clueSet = getCurrentClueSet();
-    if (!preparedSolution || !clueSet) return;
+    const wordSet = currentWordSet();
+    if (!preparedSolution || !clueSet || !wordSet) return;
     const selections: ClueSelection[] = [...section.querySelectorAll<HTMLSelectElement>('[data-clue-answer]')]
       .filter((select) => select.value)
       .map((select) => ({ answer: select.dataset.clueAnswer ?? '', clueId: select.value }));
 
-    const result = composePlayableCrossword(preparedSolution.grid, clueSet, {
+    const result = composePlayableCrosswordFromArtifacts(preparedSolution.grid, wordSet, clueSet, {
       id: idInput.value.trim(),
       name: nameInput.value.trim(),
       clueSelections: selections,
@@ -164,6 +187,7 @@ function installPlayableComposer(): void {
     }
 
     composedCrossword = result.value;
+    const composition = classifyPlayableEntries(result.value, wordSet);
     exportButton.disabled = false;
     status.textContent = `${result.value.name} est prête : ${result.value.entries.length} entrées et leurs indices sont figés.`;
     preview.hidden = false;
@@ -173,6 +197,14 @@ function installPlayableComposer(): void {
         <span>${result.value.schema}</span>
         <span>ClueSet : ${result.value.clueSetId}</span>
         <span>${result.value.entries.length} entrées jouables</span>
+        <div class="playable-editorial-inspection" aria-label="Composition éditoriale de la grille">
+          <span><small>Thématiques</small><strong>${composition.thematicCount}</strong></span>
+          <span><small>Remplissage</small><strong>${composition.fillCount}</strong></span>
+          <span><small>Part thématique</small><strong>${Math.round((composition.thematicCount / Math.max(1, composition.totalEntries)) * 100)}%</strong></span>
+        </div>
+        ${composition.fillCount > 0
+          ? `<details class="playable-fill-details"><summary>Voir les mots de remplissage (${composition.fillCount})</summary><p>${composition.fillAnswers.join(', ')}</p></details>`
+          : '<p class="playable-fill-note">Aucun mot de remplissage : toutes les entrées proviennent du WordSet thématique.</p>'}
         <p>Le JSON produit est le format attendu par la section « Jouer une grille ».</p>
       </div>
       <button type="button" class="playable-export-cta" id="export-playable-ready">Exporter cette grille en JSON</button>
