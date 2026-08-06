@@ -5,9 +5,11 @@ import {
   CLUE_SET_SCHEMA,
   type ClueSet,
 } from '../src/artifacts/clue-set';
+import { WORD_SET_SCHEMA, type WordSet } from '../src/artifacts/word-set';
 import {
   PLAYABLE_CROSSWORD_SCHEMA,
   composePlayableCrossword,
+  composePlayableCrosswordFromArtifacts,
   parsePlayableCrosswordJson,
   serializePlayableCrossword,
 } from '../src/artifacts/playable-crossword';
@@ -27,6 +29,14 @@ function gridWith(...placements: Array<{ answer: string; row: number; col: numbe
   return grid;
 }
 
+const words: WordSet = {
+  schema: WORD_SET_SCHEMA,
+  id: 'fruit-words-v1',
+  name: 'Fruits',
+  language: 'fr',
+  entries: [{ answer: 'MELON' }, { answer: 'PASTEQUE' }],
+};
+
 const clues: ClueSet = {
   schema: CLUE_SET_SCHEMA,
   id: 'fruit-clues-v1',
@@ -36,6 +46,7 @@ const clues: ClueSet = {
     { id: 'melon-definition', answer: 'MELON', kind: 'definition', text: 'Fruit rond à chair parfumée.' },
     { id: 'pasteque-definition', answer: 'PASTEQUE', kind: 'definition', text: 'Gros fruit riche en eau.' },
     { id: 'pasteque-wordplay', answer: 'PASTÈQUE', kind: 'wordplay', text: 'Elle a le cœur rouge mais ne bat jamais.', difficulty: 3 },
+    { id: 'ete-definition', answer: 'ETE', kind: 'definition', text: 'Saison chaude.' },
   ],
 };
 
@@ -64,6 +75,50 @@ describe('PlayableCrossword v1', () => {
       kind: 'wordplay',
       difficulty: 3,
     });
+  });
+
+  it('derives WordSet identity instead of treating ClueSet as a word source', () => {
+    const grid = gridWith({ answer: 'MELON', row: 0, col: 0, direction: 'across' });
+    const result = composePlayableCrosswordFromArtifacts(grid, words, clues, {
+      id: 'from-artifacts',
+      name: 'Depuis les artefacts',
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.wordSetId).toBe('fruit-words-v1');
+    expect(result.value.clueSetId).toBe('fruit-clues-v1');
+    expect(result.value.entries.map(({ answer }) => answer)).toEqual(['MELON']);
+  });
+
+  it('allows FillPass words outside the thematic WordSet when they have a clue', () => {
+    const grid = gridWith(
+      { answer: 'MELON', row: 0, col: 0, direction: 'across' },
+      { answer: 'ETE', row: -1, col: 1, direction: 'down' },
+    );
+    const result = composePlayableCrosswordFromArtifacts(grid, words, clues, {
+      id: 'with-fill',
+      name: 'Avec remplissage',
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.entries.map(({ answer }) => answer).sort()).toEqual(['ETE', 'MELON']);
+    expect(words.entries.map(({ answer }) => answer)).not.toContain('ETE');
+  });
+
+  it('rejects incompatible languages between lexical and editorial artifacts', () => {
+    const grid = gridWith({ answer: 'MELON', row: 0, col: 0, direction: 'across' });
+    const result = composePlayableCrosswordFromArtifacts(
+      grid,
+      { ...words, language: 'fr' },
+      { ...clues, language: 'en' },
+      { id: 'bad-language', name: 'Bad language' },
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.issues[0]?.message).toContain('does not match');
   });
 
   it('requires an explicit choice when several clues fit the same answer', () => {
