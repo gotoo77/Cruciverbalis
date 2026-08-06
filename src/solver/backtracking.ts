@@ -29,6 +29,9 @@ export interface SearchMetrics {
   readonly candidateAnchorsEvaluated: number;
   readonly crossingIndexesBuilt: number;
   readonly entryLetterIndexesBuilt: number;
+  readonly candidateCacheHits: number;
+  readonly candidateCacheMisses: number;
+  readonly candidateCacheEvictions: number;
   readonly forwardChecks: number;
   readonly entriesForcedUnplaced: number;
   readonly forwardCheckPrunes: number;
@@ -41,6 +44,10 @@ export interface BacktrackingOptions {
   readonly maxNodes?: number;
   readonly entryOrdering?: EntryOrdering;
   readonly branchAndBound?: boolean;
+  /** Active le cache borné des domaines de candidats par état exact de grille. */
+  readonly candidateCache?: boolean;
+  /** Nombre maximal de domaines conservés dans le cache de recherche. */
+  readonly maxCandidateCacheEntries?: number;
   /**
    * Écarte tôt les mots qui n'ont plus aucun chemin lexical possible vers la
    * grille courante, même via d'autres mots encore en attente.
@@ -74,6 +81,9 @@ interface MutableMetrics {
   candidateAnchorsEvaluated: number;
   crossingIndexesBuilt: number;
   entryLetterIndexesBuilt: number;
+  candidateCacheHits: number;
+  candidateCacheMisses: number;
+  candidateCacheEvictions: number;
   forwardChecks: number;
   entriesForcedUnplaced: number;
   forwardCheckPrunes: number;
@@ -96,6 +106,11 @@ interface CrossingAnchor {
 
 type CrossingIndex = ReadonlyMap<string, readonly CrossingAnchor[]>;
 type EntryLetterIndex = ReadonlyMap<string, readonly number[]>;
+
+interface CandidateCache {
+  readonly values: Map<string, readonly Candidate[]>;
+  readonly maxEntries: number;
+}
 
 interface SelectedEntry {
   readonly entry: Entry;
@@ -218,6 +233,45 @@ function candidatesFor(
   );
 }
 
+function gridStateKey(grid: DomainGrid): string {
+  return grid.placements
+    .map(({ entry, start, direction }) => `${entry.answer}@${start.row},${start.col},${direction}`)
+    .sort()
+    .join('|');
+}
+
+function cachedCandidatesFor(
+  grid: DomainGrid,
+  entry: Entry,
+  entryId: number,
+  crossingIndex: CrossingIndex,
+  entryIndex: EntryLetterIndex,
+  cache: CandidateCache | undefined,
+  metrics: MutableMetrics,
+): readonly Candidate[] {
+  if (!cache) return candidatesFor(grid, entry, crossingIndex, entryIndex, metrics);
+
+  const key = `${entryId}::${gridStateKey(grid)}`;
+  const cached = cache.values.get(key);
+  if (cached) {
+    metrics.candidateCacheHits += 1;
+    return cached;
+  }
+
+  metrics.candidateCacheMisses += 1;
+  const candidates = candidatesFor(grid, entry, crossingIndex, entryIndex, metrics);
+
+  if (cache.values.size >= cache.maxEntries) {
+    const oldest = cache.values.keys().next().value as string | undefined;
+    if (oldest !== undefined) {
+      cache.values.delete(oldest);
+      metrics.candidateCacheEvictions += 1;
+    }
+  }
+  cache.values.set(key, candidates);
+  return candidates;
+}
+
 function partitionByFutureReachability(
   pending: readonly Entry[],
   crossingIndex: CrossingIndex,
@@ -259,6 +313,8 @@ function selectNextEntry(
   ordering: EntryOrdering,
   crossingIndex: CrossingIndex,
   entryIndexes: ReadonlyMap<Entry, EntryLetterIndex>,
+  entryIds: ReadonlyMap<Entry, number>,
+  candidateCache: CandidateCache | undefined,
   metrics: MutableMetrics,
 ): SelectedEntry | undefined {
   if (pending.length === 0) return undefined;
@@ -270,7 +326,15 @@ function selectNextEntry(
     return {
       entry,
       rest,
-      candidates: candidatesFor(grid, entry, crossingIndex, entryIndexes.get(entry) ?? buildEntryLetterIndex(entry), metrics),
+      candidates: cachedCandidatesFor(
+        grid,
+        entry,
+        entryIds.get(entry) ?? -1,
+        crossingIndex,
+        entryIndexes.get(entry) ?? buildEntryLetterIndex(entry),
+        candidateCache,
+        metrics,
+      ),
     };
   }
 
@@ -283,7 +347,15 @@ function selectNextEntry(
     if (!entry) continue;
 
     const letterIndex = entryIndexes.get(entry) ?? buildEntryLetterIndex(entry);
-    const candidates = candidatesFor(grid, entry, crossingIndex, letterIndex, metrics);
+    const candidates = cachedCandidatesFor(
+      grid,
+      entry,
+      entryIds.get(entry) ?? -1,
+      crossingIndex,
+      letterIndex,
+      candidateCache,
+      metrics,
+    );
     metrics.candidateSetsEvaluated += 1;
 
     // Dans ce solveur les domaines peuvent grandir : un mot sans placement
@@ -360,6 +432,9 @@ export function solveBacktracking(entries: readonly Entry[], options: Backtracki
     candidateAnchorsEvaluated: 0,
     crossingIndexesBuilt: 0,
     entryLetterIndexesBuilt: 0,
+    candidateCacheHits: 0,
+    candidateCacheMisses: 0,
+    candidateCacheEvictions: 0,
     forwardChecks: 0,
     entriesForcedUnplaced: 0,
     forwardCheckPrunes: 0,
@@ -372,14 +447,21 @@ export function solveBacktracking(entries: readonly Entry[], options: Backtracki
   const collectPareto = options.collectPareto ?? false;
   const branchAndBound = (options.branchAndBound ?? true) && !collectPareto;
   const forwardChecking = options.forwardChecking ?? true;
+  const useCandidateCache = options.candidateCache ?? true;
+  const maxCandidateCacheEntries = Math.max(1, options.maxCandidateCacheEntries ?? 10_000);
+  const candidateCache: CandidateCache | undefined = useCandidateCache
+    ? { values: new Map(), maxEntries: maxCandidateCacheEntries }
+    : undefined;
   let truncated = false;
   let paretoFront: readonly ParetoSolution[] = [];
 
   const entryIndexes = new Map<Entry, EntryLetterIndex>();
-  for (const entry of normalized) {
+  const entryIds = new Map<Entry, number>();
+  normalized.forEach((entry, index) => {
     entryIndexes.set(entry, buildEntryLetterIndex(entry));
+    entryIds.set(entry, index);
     metrics.entryLetterIndexesBuilt += 1;
-  }
+  });
 
   if (normalized.length === 0) {
     const grid = createEmptyGrid();
@@ -477,6 +559,8 @@ export function solveBacktracking(entries: readonly Entry[], options: Backtracki
       entryOrdering,
       crossingIndex,
       entryIndexes,
+      entryIds,
+      candidateCache,
       metrics,
     );
     if (!selected) return;

@@ -48,9 +48,18 @@ function runStrategy(
     };
   }
 
+  // Le cache de domaines vise MRV, qui réévalue plusieurs domaines sur un même
+  // état de grille. En ordre fixe, un seul domaine est évalué par nœud : payer
+  // la signature de grille et le stockage du cache y ajoute surtout du coût.
+  // On garde donc la stratégie fixed comme témoin historique sans cache.
   const options =
     strategy === 'backtracking-fixed'
-      ? { maxNodes, entryOrdering: 'fixed' as const, branchAndBound: false }
+      ? {
+          maxNodes,
+          entryOrdering: 'fixed' as const,
+          branchAndBound: false,
+          candidateCache: false,
+        }
       : strategy === 'backtracking-mrv'
         ? { maxNodes, entryOrdering: 'mrv' as const, branchAndBound: false }
         : { maxNodes, entryOrdering: 'mrv' as const, branchAndBound: true };
