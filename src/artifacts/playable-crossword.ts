@@ -6,7 +6,7 @@ import {
   type ClueKind,
   type ClueSet,
 } from './clue-set';
-import type { ArtifactProvenance } from './word-set';
+import type { ArtifactProvenance, WordSet } from './word-set';
 
 export const PLAYABLE_CROSSWORD_SCHEMA = 'cruciverbalis.playable-crossword.v1' as const;
 
@@ -51,6 +51,11 @@ export interface ComposePlayableCrosswordOptions {
   readonly provenance?: ArtifactProvenance;
 }
 
+export type ComposePlayableCrosswordFromArtifactsOptions = Omit<
+  ComposePlayableCrosswordOptions,
+  'wordSetId'
+>;
+
 export interface PlayableCrosswordIssue {
   readonly path: string;
   readonly message: string;
@@ -89,9 +94,9 @@ function selectedClue(
 }
 
 /**
- * Composes one concrete grid and one editorial clue choice per placed answer.
- * The result is self-contained and playable: it snapshots placement geometry
- * and the selected clue text while retaining source artifact identifiers.
+ * Compose une grille concrète et choisit exactement un indice éditorial par
+ * réponse placée. Le ClueSet n'est jamais utilisé comme source des mots : il
+ * annote uniquement les réponses déjà présentes dans la grille.
  */
 export function composePlayableCrossword(
   grid: DomainGrid,
@@ -155,6 +160,39 @@ export function composePlayableCrossword(
       provenance: options.provenance,
     },
   };
+}
+
+/**
+ * Variante recommandée pour la composition éditoriale : le WordSet est la
+ * source lexicale déclarée et le ClueSet la couche d'annotations. L'identité
+ * du WordSet est dérivée de l'artefact plutôt que répétée manuellement.
+ *
+ * Les mots ajoutés ensuite par FillPass peuvent ne pas appartenir au WordSet :
+ * ils restent valides dès lors que le ClueSet fournit un indice. Le WordSet
+ * décrit donc le corpus thématique, pas nécessairement la totalité des cases
+ * finales de la grille.
+ */
+export function composePlayableCrosswordFromArtifacts(
+  grid: DomainGrid,
+  wordSet: WordSet,
+  clueSet: ClueSet,
+  options: ComposePlayableCrosswordFromArtifactsOptions,
+): ComposePlayableCrosswordResult {
+  if (wordSet.language !== clueSet.language) {
+    return {
+      ok: false,
+      issues: [{
+        path: '$.language',
+        message: `word set language ${wordSet.language} does not match clue set language ${clueSet.language}`,
+      }],
+    };
+  }
+
+  return composePlayableCrossword(grid, clueSet, {
+    ...options,
+    language: options.language ?? wordSet.language,
+    wordSetId: wordSet.id,
+  });
 }
 
 export function validatePlayableCrossword(value: unknown): PlayableCrosswordValidationResult {
