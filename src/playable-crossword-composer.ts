@@ -188,6 +188,7 @@ function installPlayableComposer(): void {
 
     composedCrossword = result.value;
     const composition = classifyPlayableEntries(result.value, wordSet);
+    const thematicShare = Math.round((composition.thematicCount / Math.max(1, composition.entries.length)) * 100);
     exportButton.disabled = false;
     status.textContent = `${result.value.name} est prête : ${result.value.entries.length} entrées et leurs indices sont figés.`;
     preview.hidden = false;
@@ -200,7 +201,7 @@ function installPlayableComposer(): void {
         <div class="playable-editorial-inspection" aria-label="Composition éditoriale de la grille">
           <span><small>Thématiques</small><strong>${composition.thematicCount}</strong></span>
           <span><small>Remplissage</small><strong>${composition.fillCount}</strong></span>
-          <span><small>Part thématique</small><strong>${Math.round((composition.thematicCount / Math.max(1, composition.totalEntries)) * 100)}%</strong></span>
+          <span><small>Part thématique</small><strong>${thematicShare}%</strong></span>
         </div>
         ${composition.fillCount > 0
           ? `<details class="playable-fill-details"><summary>Voir les mots de remplissage (${composition.fillCount})</summary><p>${composition.fillAnswers.join(', ')}</p></details>`
