@@ -28,6 +28,29 @@ describe('WordSet artifact', () => {
     expect(wordSetToEntries(result.value)[0]).toMatchObject({ answer: 'PASTÈQUE', theme: 'fruit' });
   });
 
+  it('rejects player-facing clue content in lexical entries', () => {
+    const result = validateWordSet({
+      schema: WORD_SET_SCHEMA,
+      id: 'fruit-avec-indice',
+      name: 'Fruits',
+      language: 'fr',
+      entries: [
+        {
+          answer: 'PASTEQUE',
+          theme: 'fruit',
+          definition: 'Gros fruit à chair rouge et riche en eau.',
+        },
+      ],
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.issues).toContainEqual({
+      path: '$.entries[0].definition',
+      message: 'is not allowed in WordSet entries; player-facing content belongs in ClueSet',
+    });
+  });
+
   it('rejects duplicate answers after normalization', () => {
     const result = validateWordSet({
       schema: WORD_SET_SCHEMA,
@@ -59,10 +82,13 @@ describe('WordSet artifact', () => {
     expect(parsed).toEqual({ ok: true, value: preset });
   });
 
-  it('ships only valid built-in presets', () => {
+  it('ships only valid built-in presets without player-facing fields', () => {
     expect(WORD_SET_PRESETS.length).toBeGreaterThanOrEqual(3);
     for (const preset of WORD_SET_PRESETS) {
       expect(validateWordSet(preset)).toEqual({ ok: true, value: preset });
+      for (const entry of preset.entries) {
+        expect(Object.keys(entry).every((key) => ['answer', 'theme', 'difficulty'].includes(key))).toBe(true);
+      }
     }
   });
 });
