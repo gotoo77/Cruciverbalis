@@ -5,6 +5,7 @@ export {
   type GenerationResult,
   type GenerationStrategy,
 } from './generate';
+export { deriveCrossword, type CrosswordDerivationArtifacts, type DeriveCrosswordRequest, type TraceableCrosswordDerivation } from './derive-crossword';
 export { analyzeParetoFront, gridQualitySignature, type ParetoFrontAnalysis, type ParetoQualityFamily } from '../quality/pareto-analysis';
 export { gridMorphologySignature, measureGridMorphology, type GridMorphology } from '../quality/grid-morphology';
 export { analyzeParetoMorphology, type ParetoMorphologyAnalysis, type ParetoMorphologyFamily } from '../quality/pareto-morphology';
