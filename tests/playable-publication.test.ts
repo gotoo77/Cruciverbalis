@@ -1,19 +1,29 @@
 import { describe, expect, it } from 'vitest';
 import { preflightPlayablePublication } from '../src/artifacts/playable-publication';
-import type { ClueSet } from '../src/artifacts/clue-set';
-import type { PlayableCrossword } from '../src/artifacts/playable-crossword';
+import { CLUE_SET_SCHEMA, type ClueSet } from '../src/artifacts/clue-set';
+import { PLAYABLE_CROSSWORD_SCHEMA, type PlayableCrossword } from '../src/artifacts/playable-crossword';
 
-const crossword = {
+const crossword: PlayableCrossword = {
+  schema: PLAYABLE_CROSSWORD_SCHEMA,
+  id: 'test-crossword',
+  name: 'Grille de test',
+  language: 'fr',
   clueSetId: 'clues-fr',
   entries: [
-    { answer: 'CHAT' },
-    { answer: 'ETE' },
+    {
+      id: 'entry-1', answer: 'CHAT', row: 0, col: 0, direction: 'across',
+      clue: { id: 'embedded-chat', kind: 'definition', text: 'Indice CHAT' },
+    },
+    {
+      id: 'entry-2', answer: 'ETE', row: 0, col: 1, direction: 'down',
+      clue: { id: 'embedded-ete', kind: 'definition', text: 'Indice ETE' },
+    },
   ],
-} as PlayableCrossword;
+};
 
 function clues(id: string, answers: readonly string[]): ClueSet {
   return {
-    schema: 'cruciverbalis/clue-set@1',
+    schema: CLUE_SET_SCHEMA,
     id,
     name: 'Indices',
     language: 'fr',
@@ -23,7 +33,7 @@ function clues(id: string, answers: readonly string[]): ClueSet {
       kind: 'definition',
       text: `Indice ${answer}`,
     })),
-  } as ClueSet;
+  };
 }
 
 describe('preflight de publication', () => {
