@@ -1,4 +1,5 @@
 import {
+  analyzeGridClueCoverage,
   classifyPlayableEntries,
   cluesForAnswer,
   composePlayableCrosswordFromArtifacts,
@@ -57,7 +58,31 @@ function installPlayableComposer(): void {
     downloadCrossword(composedCrossword);
     status.textContent = `${composedCrossword.name} exporté en JSON.`;
   };
-  prepare.addEventListener('click', () => { composedCrossword = undefined; exportButton.disabled = true; preview.hidden = true; preparedSolution = currentGeneratedSolution(); preparedWordSet = getCurrentWordSet(); if (!preparedSolution || !preparedWordSet) { choices.innerHTML = ''; compose.disabled = true; status.textContent = 'Aucune solution ou WordSet courant à composer.'; return; } const clueSet = getCurrentClueSet(); renderClueChoices(choices, preparedSolution); compose.disabled = !clueSet; status.textContent = clueSet ? `${preparedSolution.grid.placements.length} entrées à composer avec « ${clueSet.name} ».` : 'Charge d’abord un ClueSet.'; });
+  prepare.addEventListener('click', () => {
+    composedCrossword = undefined;
+    exportButton.disabled = true;
+    preview.hidden = true;
+    preparedSolution = currentGeneratedSolution();
+    preparedWordSet = getCurrentWordSet();
+    if (!preparedSolution || !preparedWordSet) {
+      choices.innerHTML = '';
+      compose.disabled = true;
+      status.textContent = 'Aucune solution ou WordSet courant à composer.';
+      return;
+    }
+    const clueSet = getCurrentClueSet();
+    renderClueChoices(choices, preparedSolution);
+    if (!clueSet) {
+      compose.disabled = true;
+      status.textContent = 'Charge d’abord un ClueSet.';
+      return;
+    }
+    const coverage = analyzeGridClueCoverage(preparedSolution.grid, clueSet);
+    compose.disabled = !coverage.complete;
+    status.textContent = coverage.complete
+      ? `${preparedSolution.grid.placements.length} entrées couvertes par « ${clueSet.name} » — composition possible.`
+      : `Composition bloquée — indices manquants pour : ${coverage.missingAnswers.join(', ')}.`;
+  });
   compose.addEventListener('click', () => { const clueSet = getCurrentClueSet(); if (!preparedSolution || !preparedWordSet || !clueSet) return; const selections: ClueSelection[] = [...section.querySelectorAll<HTMLSelectElement>('[data-clue-answer]')].filter((select) => select.value).map((select) => ({ answer: select.dataset.clueAnswer ?? '', clueId: select.value })); const result = composePlayableCrosswordFromArtifacts(preparedSolution.grid, preparedWordSet, clueSet, { id: idInput.value.trim(), name: nameInput.value.trim(), clueSelections: selections }); if (!result.ok) { composedCrossword = undefined; exportButton.disabled = true; preview.hidden = true; status.textContent = `Composition incomplète — ${result.issues.map(({ message }) => message).join(' · ')}`; return; } const preflight = preflightPlayablePublication(result.value, clueSet); if (!preflight.publishable) { composedCrossword = undefined; exportButton.disabled = true; preview.hidden = true; status.textContent = `Publication bloquée — ${preflight.issues.map(({ message }) => message).join(' · ')}`; return; } composedCrossword = result.value; exportButton.disabled = false; const roles = classifyPlayableEntries(result.value, preparedWordSet); status.textContent = `${result.value.name} prête : ${roles.thematicCount} mots thématiques, ${roles.fillCount} de remplissage.`; preview.hidden = false; preview.innerHTML = `<div class="playable-preview-copy"><strong>Grille jouable prête à exporter</strong><span>${result.value.schema}</span><span>WordSet : ${result.value.wordSetId}</span><span>ClueSet : ${result.value.clueSetId}</span></div>${renderEditorialInspection(result.value, preparedWordSet)}<button type="button" class="playable-export-cta" id="export-playable-ready">Exporter cette grille en JSON</button>`; preview.querySelector<HTMLButtonElement>('#export-playable-ready')?.addEventListener('click', exportCurrentCrossword); });
   exportButton.addEventListener('click', exportCurrentCrossword);
 }
