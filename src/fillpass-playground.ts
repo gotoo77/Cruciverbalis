@@ -88,7 +88,7 @@ function installFillPassPlayground(): void {
       <span class="playable-schema">FillPass</span>
     </summary>
     <div class="fillpass-content">
-      <p class="search-note">La grille générée reste la charpente thématique. Charge le fichier texte tabulé fourni par Lexique 4 (.txt ou .tsv) puis demande au FillPass de compléter les ponts compatibles sans modifier les mots du thème. L’extension du fichier n’a pas d’importance : c’est la présence des colonnes tabulées, notamment <code>ortho</code>, qui compte.</p>
+      <p class="search-note">La grille générée reste la charpente thématique. Charge le fichier texte tabulé fourni par Lexique 4 (.txt ou .tsv) puis demande au FillPass de compléter les ponts compatibles sans modifier les mots du thème. Le format officiel actuel utilise notamment <code>1_Mot</code> ; les anciens exports avec <code>ortho</code> restent acceptés.</p>
       <div class="fillpass-actions">
         <button type="button" id="import-lexique4">Charger un fichier Lexique 4 (.txt / .tsv)</button>
         <button type="button" class="secondary" id="run-fillpass" disabled>Compléter la grille courante</button>

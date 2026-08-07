@@ -19,7 +19,8 @@ export type Lexique4ImportResult =
   | { readonly ok: true; readonly value: Lexicon; readonly issues: readonly Lexique4ImportIssue[] }
   | { readonly ok: false; readonly issues: readonly Lexique4ImportIssue[] };
 
-const FREQUENCY_COLUMNS = ['freqfilms2', 'freqlivres', 'freqlemfilms2', 'freqlemlivres'];
+const WORD_COLUMNS = ['1_Mot', 'ortho'];
+const FREQUENCY_COLUMNS = ['10_FreqMot', '11_FreqOrtho', '12_FreqLemme', 'freqfilms2', 'freqlivres', 'freqlemfilms2', 'freqlemlivres'];
 
 function parseTsv(tsv: string): { headers: string[]; rows: string[][] } {
   const lines = tsv.replace(/^\uFEFF/, '').split(/\r?\n/).filter((line) => line.trim().length > 0);
@@ -43,19 +44,20 @@ function normalizeFrequency(raw: number | undefined, maxFrequency: number): numb
 /**
  * Convertit un export TSV de Lexique en artefact `Lexicon v1`.
  *
- * L'adaptateur reste volontairement tolérant sur la colonne de fréquence :
- * Lexique a fait évoluer ses jeux de données au fil des versions. La colonne
- * peut être imposée explicitement ; sinon on prend le premier nom historique
- * connu présent dans l'en-tête. La fréquence brute est ramenée sur 0..1 par
- * transformation logarithmique afin de conserver un signal utile au FillPass.
+ * Lexique 4 utilise actuellement des en-têtes numérotés (`1_Mot`,
+ * `10_FreqMot`, ...). Les anciens exports avec `ortho` et les colonnes de
+ * fréquence historiques restent acceptés pour compatibilité. Un nom de
+ * colonne fourni explicitement dans les options reste prioritaire.
  */
 export function importLexique4Tsv(tsv: string, options: Lexique4ImportOptions = {}): Lexique4ImportResult {
   const { headers, rows } = parseTsv(tsv);
   if (headers.length === 0) return { ok: false, issues: [{ message: 'Le TSV est vide.' }] };
 
-  const wordColumn = options.wordColumn ?? 'ortho';
+  const wordColumn = options.wordColumn ?? WORD_COLUMNS.find((candidate) => headers.includes(candidate));
+  if (!wordColumn) {
+    return { ok: false, issues: [{ message: `Colonne de mot absente : attendu ${WORD_COLUMNS.join(' ou ')}` }] };
+  }
   const wordIndex = headers.indexOf(wordColumn);
-  if (wordIndex < 0) return { ok: false, issues: [{ message: `Colonne de mot absente : ${wordColumn}` }] };
 
   const frequencyColumn = options.frequencyColumn ?? FREQUENCY_COLUMNS.find((candidate) => headers.includes(candidate));
   const frequencyIndex = frequencyColumn ? headers.indexOf(frequencyColumn) : -1;
@@ -97,7 +99,7 @@ export function importLexique4Tsv(tsv: string, options: Lexique4ImportOptions = 
       id: options.id ?? 'lexique4-fr',
       name: options.name ?? 'Lexique 4 — français',
       language: 'fr',
-      description: `Import Lexique avec ${frequencyColumn ?? 'aucune colonne de fréquence'} ; fréquence normalisée logarithmiquement.`,
+      description: `Import Lexique (${wordColumn}) avec ${frequencyColumn ?? 'aucune colonne de fréquence'} ; fréquence normalisée logarithmiquement.`,
       license: 'CC BY-SA 4.0',
       source: 'Lexique 4 — Boris New & Christophe Pallier',
       entries,
