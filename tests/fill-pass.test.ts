@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { DomainGrid } from '../src/core/domain';
+import { placeEntry } from '../src/core/grid';
+import type { EditorialLockSet } from '../src/artifacts/editorial-lock-set';
 import { candidatesForSlot, detectFillSlots, fillSeedGrid } from '../src/fill/fill-pass';
 
 function bridgeSeed(): DomainGrid {
@@ -9,6 +11,24 @@ function bridgeSeed(): DomainGrid {
       ['0,2', { letter: 'T', directions: new Set(['down' as const]) }],
     ]),
     placements: [],
+  };
+}
+
+function lockedCatSeed(): { grid: DomainGrid; locks: EditorialLockSet } {
+  const placed = placeEntry({ cells: new Map(), placements: [] }, {
+    entry: { answer: 'CAT' },
+    start: { row: 0, col: 0 },
+    direction: 'across',
+  });
+  if (!placed.ok) throw new Error('expected CAT seed placement');
+  return {
+    grid: placed.grid,
+    locks: {
+      schema: 'cruciverbalis.editorial-lock-set.v1',
+      id: 'locks-1',
+      name: 'Human choices',
+      locks: [{ kind: 'placement', answer: 'CAT', row: 0, col: 0, direction: 'across' }],
+    },
   };
 }
 
@@ -32,6 +52,7 @@ describe('FillPass v0', () => {
     expect(result.grid.cells.get('0,1')?.letter).toBe('A');
     expect(result.stats.slotsFilled).toBe(1);
     expect(result.truncated).toBe(false);
+    expect(result.editorialConflicts).toEqual([]);
   });
 
   it('leaves an impossible bridge explicit instead of forcing junk fill', () => {
@@ -39,5 +60,21 @@ describe('FillPass v0', () => {
     expect(result.filled).toHaveLength(0);
     expect(result.unfilled).toHaveLength(1);
     expect(result.grid.cells.size).toBe(2);
+  });
+
+  it('preserves a valid human placement lock during derivation', () => {
+    const { grid, locks } = lockedCatSeed();
+    const result = fillSeedGrid(grid, ['DOG', 'EMU'], { editorialLocks: locks });
+    expect(result.editorialConflicts).toEqual([]);
+    expect(result.grid.placements.some(({ entry }) => entry.answer === 'CAT')).toBe(true);
+  });
+
+  it('refuses derivation explicitly when the input has already violated a human lock', () => {
+    const { locks } = lockedCatSeed();
+    const result = fillSeedGrid(bridgeSeed(), ['CAT'], { editorialLocks: locks });
+    expect(result.stats.nodesExplored).toBe(0);
+    expect(result.filled).toEqual([]);
+    expect(result.editorialConflicts).toHaveLength(1);
+    expect(result.editorialConflicts[0]?.code).toBe('locked-placement-missing');
   });
 });
