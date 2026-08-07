@@ -12,6 +12,7 @@ import {
   type EntryOrdering,
   type SearchMetrics,
 } from '../solver/backtracking';
+import { solveSeededBacktracking } from '../solver/seeded-backtracking';
 import { solveGreedy } from '../solver/greedy';
 
 export type GenerationStrategy = 'greedy' | 'backtracking' | 'pareto';
@@ -74,24 +75,19 @@ export function generate(request: GenerationRequest): GenerationResult {
     : undefined;
 
   if (prepared && prepared.conflicts.length > 0) {
-    return {
-      strategy,
-      solutions: [],
-      lockConflicts: prepared.conflicts,
-      truncated: false,
-    };
+    return { strategy, solutions: [], lockConflicts: prepared.conflicts, truncated: false };
   }
 
   const options = {
     maxNodes: request.maxNodes,
     entryOrdering: request.entryOrdering,
     branchAndBound: request.branchAndBound,
-    initialGrid: prepared?.initialGrid,
   };
-  const entries = prepared?.remainingEntries ?? request.entries;
 
   if (strategy === 'pareto') {
-    const result = solveParetoBacktracking(entries, options);
+    const result = prepared
+      ? solveSeededBacktracking(prepared.initialGrid, prepared.remainingEntries, options, true)
+      : solveParetoBacktracking(request.entries, options);
     const locked = applyEditorialLocks(
       result.paretoFront.map(({ grid, unplaced, quality }) => ({ grid, unplaced, quality })),
       request.editorialLocks,
@@ -99,7 +95,9 @@ export function generate(request: GenerationRequest): GenerationResult {
     return { strategy, ...locked, search: result.metrics, truncated: result.truncated };
   }
 
-  const result = solveBacktracking(entries, options);
+  const result = prepared
+    ? solveSeededBacktracking(prepared.initialGrid, prepared.remainingEntries, options)
+    : solveBacktracking(request.entries, options);
   const locked = applyEditorialLocks([generatedGrid(result.grid, result.unplaced)], request.editorialLocks);
   return { strategy, ...locked, search: result.metrics, truncated: result.truncated };
 }
