@@ -8,11 +8,12 @@ import {
 import { measureGridQuality, type GridQuality } from '../quality/grid-quality';
 import {
   solveBacktracking,
+  solveBacktrackingFromState,
   solveParetoBacktracking,
+  solveParetoBacktrackingFromState,
   type EntryOrdering,
   type SearchMetrics,
 } from '../solver/backtracking';
-import { solveSeededBacktracking } from '../solver/seeded-backtracking';
 import { solveGreedy } from '../solver/greedy';
 
 export type GenerationStrategy = 'greedy' | 'backtracking' | 'pareto';
@@ -86,7 +87,7 @@ export function generate(request: GenerationRequest): GenerationResult {
 
   if (strategy === 'pareto') {
     const result = prepared
-      ? solveSeededBacktracking(prepared.initialGrid, prepared.remainingEntries, options, true)
+      ? solveParetoBacktrackingFromState(prepared.initialGrid, prepared.remainingEntries, options)
       : solveParetoBacktracking(request.entries, options);
     const locked = applyEditorialLocks(
       result.paretoFront.map(({ grid, unplaced, quality }) => ({ grid, unplaced, quality })),
@@ -96,7 +97,7 @@ export function generate(request: GenerationRequest): GenerationResult {
   }
 
   const result = prepared
-    ? solveSeededBacktracking(prepared.initialGrid, prepared.remainingEntries, options)
+    ? solveBacktrackingFromState(prepared.initialGrid, prepared.remainingEntries, options)
     : solveBacktracking(request.entries, options);
   const locked = applyEditorialLocks([generatedGrid(result.grid, result.unplaced)], request.editorialLocks);
   return { strategy, ...locked, search: result.metrics, truncated: result.truncated };
