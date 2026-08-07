@@ -1,18 +1,37 @@
 import { describe, expect, it } from 'vitest';
 import { analyzePlayableClueCoverage } from '../src/artifacts/playable-clue-coverage';
-import type { ClueSet } from '../src/artifacts/clue-set';
-import type { PlayableCrossword } from '../src/artifacts/playable-crossword';
+import { CLUE_SET_SCHEMA, type ClueSet } from '../src/artifacts/clue-set';
+import { PLAYABLE_CROSSWORD_SCHEMA, type PlayableCrossword } from '../src/artifacts/playable-crossword';
 
-const crossword = {
+const crossword: PlayableCrossword = {
+  schema: PLAYABLE_CROSSWORD_SCHEMA,
+  id: 'test-crossword',
+  name: 'Grille de test',
+  language: 'fr',
+  clueSetId: 'test-clues',
   entries: [
-    { answer: 'CHAT', clue: { text: 'Félin domestique.' } },
-    { answer: 'ETE', clue: { text: 'Saison chaude.' } },
+    {
+      id: 'entry-1',
+      answer: 'CHAT',
+      row: 0,
+      col: 0,
+      direction: 'across',
+      clue: { id: 'embedded-chat', kind: 'definition', text: 'Félin domestique.' },
+    },
+    {
+      id: 'entry-2',
+      answer: 'ETE',
+      row: 0,
+      col: 1,
+      direction: 'down',
+      clue: { id: 'embedded-ete', kind: 'definition', text: 'Saison chaude.' },
+    },
   ],
-} as PlayableCrossword;
+};
 
 function clueSet(answers: readonly string[]): ClueSet {
   return {
-    schema: 'cruciverbalis/clue-set@1',
+    schema: CLUE_SET_SCHEMA,
     id: 'test-clues',
     name: 'Indices de test',
     language: 'fr',
@@ -22,7 +41,7 @@ function clueSet(answers: readonly string[]): ClueSet {
       kind: 'definition',
       text: `Indice pour ${answer}`,
     })),
-  } as ClueSet;
+  };
 }
 
 describe('couverture éditoriale de la grille finale', () => {
