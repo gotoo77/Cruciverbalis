@@ -15,6 +15,7 @@ export { analyzeHumanFeedbackCorpus, type HumanFeedbackCorpusAnalysis, type Huma
 export { EDITORIAL_POLICIES, rankByEditorialPolicy, type EditorialCriterionEvaluation, type EditorialPolicy, type EditorialPolicyEvaluation, type EditorialPolicyRanking, type EditorialPreference } from '../editorial/editorial-policy';
 export { explainEditorialDecision, explainParetoRelation, type EditorialDecisionExplanation, type ParetoDecisionExplanation, type QualityMetric } from '../explain/decision-explanation';
 export { WORD_SET_SCHEMA, parseWordSetJson, serializeWordSet, validateWordSet, wordSetToEntries, type ArtifactProvenance, type WordSet, type WordSetEntry, type WordSetValidationFailure, type WordSetValidationIssue, type WordSetValidationResult, type WordSetValidationSuccess } from '../artifacts/word-set';
+export { EDITORIAL_LOCK_SET_SCHEMA, checkEditorialLocks, serializeEditorialLockSet, type EditorialLockCheck, type EditorialLockConflict, type EditorialLockSet, type PlacementEditorialLock } from '../artifacts/editorial-lock-set';
 export { CLUE_KINDS, CLUE_SET_SCHEMA, cluesForAnswer, parseClueSetJson, serializeClueSet, validateClueSet, type Clue, type ClueKind, type ClueSet, type ClueSetValidationFailure, type ClueSetValidationIssue, type ClueSetValidationResult, type ClueSetValidationSuccess } from '../artifacts/clue-set';
 export { analyzeClueCoverage, type ClueCoverage } from '../artifacts/clue-coverage';
 export { analyzeGridClueCoverage, type GridClueCoverage } from '../artifacts/grid-clue-coverage';
