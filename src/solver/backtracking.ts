@@ -44,6 +44,8 @@ export interface BacktrackingOptions {
   readonly maxCandidateCacheEntries?: number;
   readonly forwardChecking?: boolean;
   readonly collectPareto?: boolean;
+  /** Internal accounting offset used by the historical facade for its pre-seeded first entry. */
+  readonly initialEntryLetterIndexesBuilt?: number;
 }
 
 export interface BacktrackingResult {
@@ -224,6 +226,7 @@ export function solveBacktrackingFromState(initialGrid: DomainGrid, entries: rea
     .sort((left, right) => right.answer.length - left.answer.length || left.answer.localeCompare(right.answer));
   const invalid = entries.filter((entry) => normalizeAnswer(entry.answer).length < 2);
   const metrics = emptyMetrics();
+  metrics.entryLetterIndexesBuilt = options.initialEntryLetterIndexesBuilt ?? 0;
   const maxNodes = options.maxNodes ?? 100_000;
   const entryOrdering = options.entryOrdering ?? 'mrv';
   const collectPareto = options.collectPareto ?? false;
@@ -302,7 +305,10 @@ export function solveBacktracking(entries: readonly Entry[], options: Backtracki
   const initial = placeEntry(createEmptyGrid(), { entry: first, start: { row: 0, col: 0 }, direction: 'across' });
   if (!initial.ok) return solveBacktrackingFromState(createEmptyGrid(), entries, options);
   const invalid = entries.filter((entry) => normalizeAnswer(entry.answer).length < 2);
-  return solveBacktrackingFromState(initial.grid, [...remaining, ...invalid], options);
+  return solveBacktrackingFromState(initial.grid, [...remaining, ...invalid], {
+    ...options,
+    initialEntryLetterIndexesBuilt: (options.initialEntryLetterIndexesBuilt ?? 0) + 1,
+  });
 }
 
 export function solveParetoBacktracking(entries: readonly Entry[], options: Omit<BacktrackingOptions, 'collectPareto'> = {}): BacktrackingResult {
