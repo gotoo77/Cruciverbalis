@@ -1,5 +1,10 @@
 import type { DomainGrid, Entry } from '../core/domain';
-import { checkEditorialLocks, type EditorialLockConflict, type EditorialLockSet } from '../artifacts/editorial-lock-set';
+import {
+  checkEditorialLocks,
+  prepareEditorialConstraints,
+  type EditorialLockConflict,
+  type EditorialLockSet,
+} from '../artifacts/editorial-lock-set';
 import { measureGridQuality, type GridQuality } from '../quality/grid-quality';
 import {
   solveBacktracking,
@@ -7,6 +12,7 @@ import {
   type EntryOrdering,
   type SearchMetrics,
 } from '../solver/backtracking';
+import { solveSeededBacktracking } from '../solver/seeded-backtracking';
 import { solveGreedy } from '../solver/greedy';
 
 export type GenerationStrategy = 'greedy' | 'backtracking' | 'pareto';
@@ -32,65 +38,44 @@ export interface GenerationResult {
   readonly solutions: readonly GeneratedGrid[];
   readonly search?: SearchMetrics;
   readonly truncated: boolean;
-  /** Conflicts observed when generated candidates violate human editorial locks. */
   readonly lockConflicts?: readonly EditorialLockConflict[];
 }
 
 function generatedGrid(grid: DomainGrid, unplaced: readonly Entry[]): GeneratedGrid {
-  return {
-    grid,
-    unplaced: [...unplaced],
-    quality: measureGridQuality(grid),
-  };
+  return { grid, unplaced: [...unplaced], quality: measureGridQuality(grid) };
 }
 
 function applyEditorialLocks(
   solutions: readonly GeneratedGrid[],
   lockSet: EditorialLockSet | undefined,
 ): Pick<GenerationResult, 'solutions' | 'lockConflicts'> {
-  if (!lockSet) {
-    return { solutions };
-  }
-
+  if (!lockSet) return { solutions };
   const accepted: GeneratedGrid[] = [];
   const conflicts: EditorialLockConflict[] = [];
   for (const solution of solutions) {
     const check = checkEditorialLocks(solution.grid, lockSet);
-    if (check.respected) {
-      accepted.push(solution);
-    } else {
-      conflicts.push(...check.conflicts);
-    }
+    if (check.respected) accepted.push(solution);
+    else conflicts.push(...check.conflicts);
   }
-
-  return {
-    solutions: accepted,
-    lockConflicts: conflicts,
-  };
+  return { solutions: accepted, lockConflicts: conflicts };
 }
 
-/**
- * Stable application-facing entry point for crossword generation.
- *
- * UI and external consumers should depend on this function instead of calling
- * individual solver implementations directly. When editorial locks are
- * supplied, incompatible derivations are rejected explicitly; locks are never
- * relaxed or converted into a ranking score.
- */
+/** Stable application-facing entry point for crossword generation. */
 export function generate(request: GenerationRequest): GenerationResult {
   const strategy = request.strategy ?? 'backtracking';
 
   if (strategy === 'greedy') {
     const result = solveGreedy(request.entries);
-    const locked = applyEditorialLocks(
-      [generatedGrid(result.grid, result.unplaced)],
-      request.editorialLocks,
-    );
-    return {
-      strategy,
-      ...locked,
-      truncated: false,
-    };
+    const locked = applyEditorialLocks([generatedGrid(result.grid, result.unplaced)], request.editorialLocks);
+    return { strategy, ...locked, truncated: false };
+  }
+
+  const prepared = request.editorialLocks
+    ? prepareEditorialConstraints(request.entries, request.editorialLocks)
+    : undefined;
+
+  if (prepared && prepared.conflicts.length > 0) {
+    return { strategy, solutions: [], lockConflicts: prepared.conflicts, truncated: false };
   }
 
   const options = {
@@ -100,28 +85,19 @@ export function generate(request: GenerationRequest): GenerationResult {
   };
 
   if (strategy === 'pareto') {
-    const result = solveParetoBacktracking(request.entries, options);
+    const result = prepared
+      ? solveSeededBacktracking(prepared.initialGrid, prepared.remainingEntries, options, true)
+      : solveParetoBacktracking(request.entries, options);
     const locked = applyEditorialLocks(
       result.paretoFront.map(({ grid, unplaced, quality }) => ({ grid, unplaced, quality })),
       request.editorialLocks,
     );
-    return {
-      strategy,
-      ...locked,
-      search: result.metrics,
-      truncated: result.truncated,
-    };
+    return { strategy, ...locked, search: result.metrics, truncated: result.truncated };
   }
 
-  const result = solveBacktracking(request.entries, options);
-  const locked = applyEditorialLocks(
-    [generatedGrid(result.grid, result.unplaced)],
-    request.editorialLocks,
-  );
-  return {
-    strategy,
-    ...locked,
-    search: result.metrics,
-    truncated: result.truncated,
-  };
+  const result = prepared
+    ? solveSeededBacktracking(prepared.initialGrid, prepared.remainingEntries, options)
+    : solveBacktracking(request.entries, options);
+  const locked = applyEditorialLocks([generatedGrid(result.grid, result.unplaced)], request.editorialLocks);
+  return { strategy, ...locked, search: result.metrics, truncated: result.truncated };
 }
