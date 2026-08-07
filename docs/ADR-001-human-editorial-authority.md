@@ -14,13 +14,15 @@ Les décisions humaines sont conservées dans un artefact versionné séparé : 
 
 Une décision verrouillée est une **contrainte dure**, pas une préférence ni une dimension de qualité. Le moteur peut proposer une autre solution, mais il ne peut pas violer silencieusement un verrou pour améliorer un score ou le front de Pareto.
 
+Une contrainte dure est aussi une **contrainte de recherche** : lorsqu'un placement est verrouillé, il appartient à l'état initial admissible et réduit l'espace exploré. Le moteur construit autour de cette décision au lieu de générer librement puis de jeter les résultats incompatibles.
+
 La dérivation conceptuelle devient :
 
 ```text
-sources + proposition + EditorialLockSet -> dérivation contrainte
+sources + proposition + EditorialLockSet -> état initial contraint -> dérivation contrainte
 ```
 
-Si aucun résultat ne satisfait les verrous, l'opération échoue explicitement et retourne les conflits. Elle ne relâche jamais automatiquement une décision humaine.
+Si les verrous sont incompatibles entre eux ou avec les sources, l'opération échoue explicitement avant la recherche et retourne les conflits. Elle ne relâche jamais automatiquement une décision humaine.
 
 ## Première portée
 
@@ -32,10 +34,11 @@ Les futurs types de verrou — choix d'indice, case, exclusion lexicale, rôle t
 
 1. Un verrou humain n'est jamais converti en score.
 2. Une dérivation déclarée réussie respecte tous les verrous applicables.
-3. Une incompatibilité est observable et structurée.
+3. Une incompatibilité est observable et structurée avant recherche lorsqu'elle est détectable depuis les sources et les verrous.
 4. L'artefact de verrou est sérialisable, validable et indépendant de `PlayableCrossword`.
 5. Les transformations qui ne modifient pas une décision verrouillée restent libres d'optimiser le reste de la grille.
 6. La provenance permet de relier les décisions à leurs artefacts parents lorsque cette information est disponible.
+7. Le filtre final de vérification reste un garde-fou défensif, pas le mécanisme principal d'application des verrous.
 
 ## Conséquences
 
